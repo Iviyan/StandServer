@@ -1,0 +1,55 @@
+{
+  "name": "test",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "set NODE_OPTIONS_=--openssl-legacy-provider && vue-cli-service serve",
+    "build": "set NODE_OPTIONS_=--openssl-legacy-provider && vue-cli-service build",
+    "lint": "set NODE_OPTIONS_=--openssl-legacy-provider && vue-cli-service lint"
+  },
+  "dependencies": {
+    "@easepick/core": "^1.2.0",
+    "@easepick/lock-plugin": "^1.2.0",
+    "@easepick/range-plugin": "^1.2.0",
+    "@microsoft/signalr": "^6.0.7",
+    "@popperjs/core": "^2.11.5",
+    "async-mutex": "^0.3.2",
+    "bootstrap": "^5.2.0",
+    "chart.js": "^3.7.1",
+    "chartjs-adapter-luxon": "^1.1.0",
+    "chartjs-plugin-zoom": "^1.2.1",
+    "izitoast": "^1.4.0",
+    "jwt-decode": "^3.1.2",
+    "luxon": "^3.0.1",
+    "vue": "^3.2.13",
+    "vue-final-modal": "^3.4.4",
+    "vue-router": "^4.0.3",
+    "vuex": "^4.0.0",
+    "vuex-multi-tab-state": "^1.0.17"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-router": "~5.0.0",
+    "@vue/cli-plugin-vuex": "~5.0.0",
+    "@vue/cli-service": "~5.0.0"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential",
+      "@vue/standard"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2020
+    },
+    "rules": {}
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
