@@ -51,19 +51,16 @@ function fetchData(data, x1, x2) {
 	end--;
 	let count = end - start + 1;
 	console.log('data length: ', data.length, ', start: ', start, ', end: ', end);
-	//console.log('start: ', start, ' - ', data[start][props.xAxis], ' < ', x1);
 
 	let dec = decimation({
 		data: data,
 		xAxis: props.xAxis,
 		yAxis: props.yAxis,
-		//start: 0, count: data.length,
 		start: start === 0 ? start : start - 1,
-		count: (start === 0 ? 0 : 1) + (count === data.length ? count : count + 1),
-		availableWidth: chart.width / 10
+		count: end === data.length - 1 ? count : (start === 0 ? 0 : 1) + count + 1,
+		availableWidth: chart.width / 6,
+		skipIf: props.showOffStateRecords ? m => !m.state : null
 	});
-	console.log('decimated data length: ', dec.length);
-
 
 	dataCount.value = data.length;
 	dataSegmentCount.value = count;
