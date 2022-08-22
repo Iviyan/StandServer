@@ -9,7 +9,6 @@ public class StandHub : Hub<IStandHubClient>
     public StandHub(CachedData cachedData)
     {
         this.cachedData = cachedData;
-        Console.WriteLine("StandHub constructor");
     }
     
     public async Task Msg(string message)

@@ -103,7 +103,7 @@ var tokenValidationParams = new TokenValidationParameters
     ClockSkew = TimeSpan.Zero,
 };
 
-JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // TODO: ~~~
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 // Authentication with JWT configuration
 
@@ -118,9 +118,6 @@ services.AddAuthentication(options =>
         jwt.SaveToken = true;
         jwt.TokenValidationParameters = tokenValidationParams;
     });
-
-// ???
-// TypeDescriptor.AddAttributes(typeof(DateTime), new TypeConverterAttribute(typeof(LocalDateTimeConverter)));
 
 services.AddSingleton<CachedData>(); // Some frequently used data
 services.AddTransient<LoadCacheService>(); // A service that load data once when the application starts

@@ -134,7 +134,7 @@ public class AccountController : ControllerBase
             new CookieOptions
             {
                 HttpOnly = true,
-                // Secure = true, //TODO: 
+                // Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Expires = DateTimeOffset.Now.Add(TimeSpan.FromDays(30))
             });

@@ -22,7 +22,8 @@ public class LoadCacheService : BackgroundService
         await using var con = efContext.Database.GetDbConnection();
 
         cachedData.SampleIds = new(
-            await con.QueryAsync<int>(@"select * from get_unique_sample_ids()"));
+            await con.QueryAsync<int>(new  CommandDefinition(
+                @"select * from get_unique_sample_ids()", cancellationToken: stoppingToken)));
 
         logger.LogInformation($"> Sample ids loaded");
 
