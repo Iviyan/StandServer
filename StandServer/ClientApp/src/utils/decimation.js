@@ -16,25 +16,27 @@ export function decimation({ data, xAxis = 'x', yAxis = 'y', start, count, avail
 	const to = data[endIndex][xAxis];
 	const interval = to - from;
 
+	const skip = skipIf
+		? point => isNullOrUndef(point[yAxis]) || skipIf && skipIf(point)
+		: point => isNullOrUndef(point[yAxis]);
+
 	let i = start;
 	for (; i < start + count; ++i) {
 		let point = data[i];
-		if (isNullOrUndef(point?.[yAxis]))
-			decimated.push(point);
+		if (skip(point)) decimated.push(point);
 		else break;
 	}
 
-	decimated.push(data[i++])
+	minIndex = maxIndex = startIndex = i;
 
 	for (; i < endIndex; ++i) {
 		let point = data[i];
 		const x = ((point[xAxis] - from) / interval * availableWidth) | 0;
 		const y = point[yAxis];
 
-		let isPenultimateElement = i + 1 === endIndex;
-		let isNextPointNull = isNullOrUndef(data[i + 1][yAxis]) || skipIf && skipIf(data[i + 1]);
+		let skipNextPoint = skip(data[i + 1]);
 
-		if (x === prevX && !isNextPointNull) {
+		if (x === prevX && !skipNextPoint) {
 			if (y < minY) {
 				minY = y;
 				minIndex = i;
@@ -45,7 +47,7 @@ export function decimation({ data, xAxis = 'x', yAxis = 'y', start, count, avail
 			avgX = (countX * avgX + point[xAxis]) / ++countX;
 			avgY = ((countX - 1) * avgY + point[xAxis]) / countX;
 		} else {
-			if (i === startIndex + 1 && !isNextPointNull || countX > 0) { // right after the new x
+			if (i === startIndex && !skipNextPoint || countX > 0) { // right after the new x
 				decimated.push(data[Math.min(minIndex, maxIndex)]);
 				if (minIndex !== maxIndex)
 					decimated.push(data[Math.max(minIndex, maxIndex)]);
@@ -53,12 +55,18 @@ export function decimation({ data, xAxis = 'x', yAxis = 'y', start, count, avail
 
 			prevX = x;
 			countX = 0;
-			minY = maxY = y;
-			minIndex = maxIndex = startIndex = i;
 
-			if (isNextPointNull) {
-				decimated.push(...data.slice(i, i + 2 + (isPenultimateElement ? 0 : 1) ));
-				i += 2 + (isPenultimateElement ? 0 : 1);
+			if (skipNextPoint) {
+				let skipRangeStart = i;
+				for (i += 2; i <= endIndex; ++i) {
+					if (!skip(data[i]) && (i < endIndex ? !skip(data[i + 1]) : true)) break;
+				}
+				decimated.push(...data.slice(skipRangeStart, i + 1));
+			}
+
+			if (i < endIndex) {
+				minY = maxY = data[i + 1][yAxis];
+				minIndex = maxIndex = startIndex = i + 1;
 			}
 		}
 	}

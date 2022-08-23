@@ -89,6 +89,7 @@ button, input, optgroup, select, textarea {
 	right: 0.5rem;
 	border: none;
 	background-color: transparent;
+	cursor: pointer;
 }
 
 .modal__content {

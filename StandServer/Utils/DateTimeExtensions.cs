@@ -21,7 +21,8 @@ public static class DateTimeExtensions
     public static DateTime GetKindUtc(this DateTime dateTime) 
         => dateTime.Kind == DateTimeKind.Utc ? dateTime : DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
 
-    public static DateTime RoundToSeconds(this DateTime dateTime) => new(dateTime.Ticks / 1000_0000 * 1000_0000);
+    public static DateTime RoundToSeconds(this DateTime dateTime)
+        => new(dateTime.Ticks / 1000_0000 * 1000_0000, dateTime.Kind);
 
     /// <summary>
     /// Converts a given DateTime into a Unix timestamp

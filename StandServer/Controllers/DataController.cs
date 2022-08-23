@@ -25,13 +25,13 @@ public class DataController : Controller
             if (currentState is { } && currentState.State == newState)
                 return Problem(statusCode: StatusCodes.Status404NotFound, title: $"Stand is already {(currentState.State ? "on" : "off")}");
 
-            StateHistory stateRecord = new() { State = newState, Time = DateTime.Now.GetKindUtc().RoundToSeconds() };
+            StateHistory stateRecord = new() { State = newState, Time = DateTime.Now.RoundToSeconds().GetKindUtc() };
 
             context.StateHistory.Add(stateRecord);
             await context.SaveChangesAsync();
 
             data.State = stateRecord;
-            data.LastActiveTime = DateTime.Now.GetKindUtc().RoundToSeconds();
+            data.LastActiveTime = DateTime.Now.RoundToSeconds().GetKindUtc();
 
             await standHub.Clients.Group(StandHub.MeasurementsGroup).StateChange(newState);
 

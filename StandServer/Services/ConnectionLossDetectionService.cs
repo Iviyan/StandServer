@@ -55,7 +55,7 @@ public class ConnectionLossDetectionService : BackgroundService
                     StateHistory state = new()
                     {
                         State = false,
-                        Time = cachedData.LastActiveTime.Value.GetKindUtc().RoundToSeconds().AddSeconds(1)
+                        Time = cachedData.LastActiveTime.Value.RoundToSeconds().AddSeconds(1).GetKindUtc()
                     };
                     context.StateHistory.Add(state);
                     await context.SaveChangesAsync(stoppingToken);
