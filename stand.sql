@@ -132,8 +132,8 @@ CREATE OR REPLACE FUNCTION get_last_measurements(count int)
 AS $$ BEGIN
     return query
         select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
-            ( select *, ROW_NUMBER() OVER(PARTITION BY sample_id ORDER BY time) AS row from measurements ) as q
-        where row <= count;
+            ( select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements ) as q
+        where row <= count order by time asc;
 END $$ LANGUAGE plpgsql;
 
 -- select * from get_last_measurements(5);
