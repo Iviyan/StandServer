@@ -28,7 +28,7 @@ public class HubTestService : BackgroundService
                 new Measurement
                 {
                     SampleId = 1,
-                    Time = DateTime.Now.GetKindUtc(),
+                    Time = DateTime.UtcNow,
                     SecondsFromStart = 60,
                     DutyCycle = 20,
                     T = (short)Random.Shared.Next(10, 50),

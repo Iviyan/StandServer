@@ -23,7 +23,7 @@
 		</div>
 		<div class="modal__action">
 			<button @click="saveSettings">Сохранить</button>
-			<button @click="showSettingsModal = false">Отмена</button>
+			<button @click="previewSampleIdsTemp = previewSampleIds.slice(); showSettingsModal = false">Отмена</button>
 		</div>
 	</vue-final-modal>
 
@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useStore } from 'vuex'
 
 import { VueFinalModal } from 'vue-final-modal'
@@ -119,7 +119,7 @@ function selectAllSampleIds(event) {
 
 function saveSettings() {
 	showSettingsModal.value = false;
-	previewSampleIds.value = previewSampleIdsTemp.value;
+	previewSampleIds.value = previewSampleIdsTemp.value.slice();
 	localStorage.setItem("Home.Preview.SampleIds", JSON.stringify(previewSampleIds.value));
 }
 
@@ -131,6 +131,7 @@ function loadSettings() {
 		console.error('Failed to parse settings');
 		previewSampleIdsLS = null;
 	}
+	let initPreviewSampleIdsLSLength = previewSampleIdsLS?.length;
 	if (previewSampleIdsLS && !(previewSampleIdsLS instanceof Array)) previewSampleIdsLS = null;
 	if (previewSampleIdsLS && !(previewSampleIdsLS.every(e => Number.isInteger(e)))) previewSampleIdsLS = null;
 	if (previewSampleIdsLS) {
@@ -139,10 +140,10 @@ function loadSettings() {
 	}
 
 	previewSampleIds.value = previewSampleIdsLS ?? sampleIds.value.slice();
-	if (!previewSampleIdsLS)
+	if (!previewSampleIdsLS || initPreviewSampleIdsLSLength !== previewSampleIds.value.length)
 		localStorage.setItem("Home.Preview.SampleIds", JSON.stringify(previewSampleIds.value));
 
-	previewSampleIdsTemp.value = previewSampleIds.value;
+	previewSampleIdsTemp.value = previewSampleIds.value.slice();
 }
 
 onMounted(async () => {
@@ -155,7 +156,13 @@ onMounted(async () => {
 	loaded.value = true;
 
 	signalRConnection.value.on("NewMeasurement", (sampleId, measurement) => {
+		let isNewSample = !store.state.dashboard.sampleIds.includes(sampleId);
 		store.commit("newMeasurement", { sampleId, measurement });
+		if (isNewSample) {
+			previewSampleIdsTemp.value.push(sampleId);
+			previewSampleIds.value.push(sampleId);
+			localStorage.setItem("Home.Preview.SampleIds", JSON.stringify(previewSampleIds.value));
+		}
 	});
 
 	const subscribeFunc = () => signalRConnection.value.send("SubscribeToMeasurements");

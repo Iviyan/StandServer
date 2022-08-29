@@ -8,5 +8,5 @@ public class RefreshToken
     public User? User { get; set; }
     [Column("device_uid")] public Guid DeviceUid { get; set; }
     [Column("expires")] public DateTime Expires { get; set; }
-    public bool IsExpired => DateTime.Now >= Expires;
+    public bool IsExpired => DateTime.UtcNow >= Expires;
 }

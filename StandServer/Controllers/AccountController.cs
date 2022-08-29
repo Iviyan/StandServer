@@ -33,7 +33,7 @@ public class AccountController : ControllerBase
         RefreshToken refreshToken = new()
         {
             UserId = user.Id,
-            Expires = (DateTime.Now + TimeSpan.FromDays(30)).GetKindUtc(),
+            Expires = DateTime.UtcNow + TimeSpan.FromDays(30),
             DeviceUid = requestData.DeviceUid
         };
         context.RefreshTokens.Add(refreshToken);
@@ -78,7 +78,7 @@ public class AccountController : ControllerBase
         RefreshToken refreshToken = new()
         {
             UserId = user.Id,
-            Expires = (DateTime.Now + TimeSpan.FromDays(30)).GetKindUtc(),
+            Expires = DateTime.UtcNow + TimeSpan.FromDays(30),
             DeviceUid = requestData.DeviceUid
         };
 
@@ -109,7 +109,7 @@ public class AccountController : ControllerBase
             return Problem(title: "There is no RefreshToken cookie", statusCode: StatusCodes.Status400BadRequest);
 
         RefreshToken? refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(t => t.Id == token);
-        if (refreshToken == null || refreshToken.Expires <= DateTime.Now)
+        if (refreshToken == null || refreshToken.Expires <= DateTime.UtcNow)
             return Problem(title: "Invalid or expired token", statusCode: StatusCodes.Status400BadRequest);
         if (refreshToken.DeviceUid != requestData.DeviceUid)
             return Problem(title: "Invalid token", detail: "The token was created on another client",
@@ -121,7 +121,7 @@ public class AccountController : ControllerBase
         RefreshToken newRefreshToken = new()
         {
             UserId = user.Id,
-            Expires = (DateTime.Now + TimeSpan.FromDays(30)).GetKindUtc(),
+            Expires = DateTime.UtcNow + TimeSpan.FromDays(30),
             DeviceUid = requestData.DeviceUid
         };
         context.RefreshTokens.Remove(refreshToken);

@@ -207,7 +207,7 @@ onMounted(() => {
 
 
 function setData(data, saveZoom = false) {
-	console.log('chart updating by new array', data);
+	//console.log('chart updating by new array', data);
 	if (!data) {
 		chart.data.datasets[0].data = [];
 		chart.stop();

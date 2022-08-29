@@ -66,7 +66,7 @@ public class LocalDateTimeConverter : TypeConverter
         {
             if (long.TryParse(str, out long unix))
                 return DateTime.UnixEpoch.AddSeconds(unix);
-            if (DateTime.TryParse(str, new CultureInfo("ru"), DateTimeStyles.None, out DateTime date))
+            if (DateTime.TryParse(str, CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime date))
                 return date;
         }
         return base.ConvertFrom(context, culture, value);

@@ -53,7 +53,7 @@ services.AddSignalR()
     {
         options.PayloadSerializerOptions.PropertyNamingPolicy = SnakeCaseNamingPolicy.Instance;
         options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(SnakeCaseNamingPolicy.Instance));
-        options.PayloadSerializerOptions.Converters.Add(new StandServer.Utils.DateTimeConverter());
+        options.PayloadSerializerOptions.Converters.Add(new DateTimeJsonConverter());
     });
 
 // FluentValidation configuration (part)
@@ -76,7 +76,7 @@ services.AddControllers(options =>
 #if !DEBUG
         options.AllowInputFormatterExceptionMessages = false;
 #endif
-        options.JsonSerializerOptions.Converters.Add(new StandServer.Utils.DateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new DateTimeJsonConverter());
     })
     .AddFluentValidation(fv =>
     {
@@ -136,6 +136,8 @@ services.AddHostedService<ConnectionLossDetectionService>();
 //services.AddHostedService<HubTestService>(); // SignalR Health Testing Service
 
 var app = builder.Build();
+
+Console.WriteLine("Current culture: " + CultureInfo.CurrentCulture);
 
 // Loading cache data
 var loadCacheService = app.Services.GetRequiredService<LoadCacheService>();

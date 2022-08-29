@@ -6,12 +6,12 @@
 			<input ref="datepickerEl" />
 			<div>
 				<div>
-					<button class="all-period-btn" @click="getAndSetPeriod">Всё время</button>
-					<button class="select-period-btn ms-6" @click="showSelectPeriodModal = true">Выбрать из истории
+					<!--<button class="all-period-btn" @click="getAndSetPeriod">Всё время</button>-->
+					<button class="select-period-btn" @click="showSelectPeriodModal = true">Выбрать из истории
 					</button>
 				</div>
 				<div class="mt-8">
-					<button class="load-btn" @click="load">Загрузить</button>
+					<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
 					<button class="load-csv-btn ms-6" @click="loadCsv">Скачать (csv)</button>
 					<button class="load-csv-btn ms-6" @click="showRemoveSampleModal = true">Удалить образец</button>
 				</div>
@@ -27,15 +27,18 @@
 				<div class="state-history-records">
 					<Pass v-for="record in stateHistory"
 						  :from="secondsToDateTime(record.from).split(' ')"
-						  :to="secondsToDateTime(record.to).split(' ')"
+						  :to="record.to ? secondsToDateTime(record.to).split(' ') : null"
 						  v-slot="{ from, to }">
 						<Pass
 							:fromDate="from[0]" :fromTime="from[1]"
-							:toDate="to[0]" :toTime="to[1]"
+							:toDate="to?.[0]" :toTime="to?.[1]"
 							v-slot="{ fromDate, fromTime, toDate, toTime }">
 							<p @click="selectPeriod(record)">
 								<span>{{ fromDate }}</span> <span class="time">{{ fromTime }}</span> -
-								<span>{{ toDate }}</span> <span class="time">{{ toTime }}</span>
+								<template v-if="to">
+									<span>{{ toDate }}</span> <span class="time">{{ toTime }}</span>
+								</template>
+								<span v-else> * </span>
 							</p>
 						</Pass>
 					</Pass>
@@ -106,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, computed, getCurrentInstance, watch, reactive, shallowRef, onMounted } from 'vue';
+import { ref, computed, watch, shallowRef, onMounted } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router';
 
@@ -173,12 +176,16 @@ function selectPeriod(record) {
 
 // load data
 
+const isLoading = ref(false);
+
 async function load() {
+	isLoading.value = true;
 	data.value = await call_get(`/api/samples/${ props.id }`, {
 		from: datepicker.getStartDate().getTime(),
 		to: datepicker.getEndDate().getTime() + (24 * 60 * 60 * 1000 - 1)
 	});
 	console.log(data.value);
+	isLoading.value = false;
 }
 
 function loadCsv() {
@@ -220,9 +227,10 @@ onMounted(async () => {
 		},
 		LockPlugin: {
 			minDate: new Date(0),
+			maxDate: new Date(0),
 		},
 		setup(picker) {
-			//picker.on('select', (e) => {});
+			picker.on('select', async (e) => { await load() });
 		},
 	});
 })
@@ -241,7 +249,11 @@ watch(() => props.id, async id => {
 
 		datepicker.PluginManager.instances.LockPlugin.options.minDate.setTime(
 			floorToDay(new Date(period.from)).getTime());
+		datepicker.PluginManager.instances.LockPlugin.options.maxDate.setTime(
+			floorToDay(new Date(period.to)).getTime());
 		setPeriod(period);
+
+		await load();
 	} catch (error) {
 		if (error instanceof RequestError && error.rfc7807) {
 			iziToast.error({

@@ -25,13 +25,13 @@ public class DataController : Controller
             if (currentState is { } && currentState.State == newState)
                 return Problem(statusCode: StatusCodes.Status404NotFound, title: $"Stand is already {(currentState.State ? "on" : "off")}");
 
-            StateHistory stateRecord = new() { State = newState, Time = DateTime.Now.RoundToSeconds().GetKindUtc() };
+            StateHistory stateRecord = new() { State = newState, Time = DateTime.UtcNow.RoundToSeconds() };
 
             context.StateHistory.Add(stateRecord);
             await context.SaveChangesAsync();
 
             data.State = stateRecord;
-            data.LastActiveTime = DateTime.Now.RoundToSeconds().GetKindUtc();
+            data.LastActiveTime = DateTime.UtcNow.RoundToSeconds();
 
             await standHub.Clients.Group(StandHub.MeasurementsGroup).StateChange(newState);
 
@@ -68,7 +68,7 @@ public class DataController : Controller
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
         [FromBody] Measurement measurement, [FromQuery] bool silent = false)
     {
-        measurement.Time = measurement.Time.GetKindUtc();
+        measurement.Time = measurement.Time.ToUniversalTime();
 
         if (silent)
         {
@@ -107,7 +107,7 @@ public class DataController : Controller
                 await standHub.Clients.All.StateChange(newState.State);
             }
 
-            data.LastActiveTime = DateTime.Now;
+            data.LastActiveTime = DateTime.UtcNow;
 
             await standHub.Clients.Group(StandHub.MeasurementsGroup).NewMeasurement(measurement.SampleId, measurement);
 
@@ -180,7 +180,7 @@ public class DataController : Controller
             foreach (var measurement in measurements)
                 await standHub.Clients.All.NewMeasurement(measurement.SampleId, measurement);
 
-            data.LastActiveTime = DateTime.Now;
+            data.LastActiveTime = DateTime.UtcNow;
 
             return Ok();
         }
@@ -228,7 +228,7 @@ public class DataController : Controller
 
     [HttpGet("samples/last")]
     public async Task<IActionResult> GetLastMeasurements(
-        [FromServices] DatabaseContext context, [FromServices] CachedData data,
+        [FromServices] DatabaseContext context,
         int count = 20)
     {
         if (count <= 0)
@@ -350,7 +350,7 @@ public class DataController : Controller
         Measurement measurement = new()
         {
             SampleId = sampleId,
-            Time = time.GetKindUtc(),
+            Time = time.ToUniversalTime(),
             SecondsFromStart = secondsFromStart,
             DutyCycle = dutyCycle,
             T = t,

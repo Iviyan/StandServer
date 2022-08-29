@@ -26,7 +26,7 @@ public class ClearOldRefreshTokensService : BackgroundService
         {
             logger.LogInformation($"Old refresh tokens deleting... ({DateTime.Now:O})");
 
-            var now = DateTime.Now.GetKindUtc();
+            var now = DateTime.UtcNow;
             await context.RefreshTokens
                 .Where(t => now >= t.Expires)
                 .BatchDeleteAsync(stoppingToken);

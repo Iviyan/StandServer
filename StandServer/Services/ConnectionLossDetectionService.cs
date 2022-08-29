@@ -44,7 +44,7 @@ public class ConnectionLossDetectionService : BackgroundService
             
             logger.LogDebug($"Connection loss checking... ({DateTime.Now:O})");
 
-            if (DateTime.Now > cachedData.LastActiveTime.Value
+            if (DateTime.UtcNow > cachedData.LastActiveTime.Value
                     .AddSeconds(standInfo.MeasurementInterval + MeasurementIntervalError))
             {
                 logger.LogInformation($"Connection loss detected... ({DateTime.Now:O})");
@@ -66,7 +66,27 @@ public class ConnectionLossDetectionService : BackgroundService
                 finally { cachedData.StateChangeLock.Release(); }
             }
         }
-        
+
+        if (cachedData.State is { State: false })
+        {
+            logger.LogWarning("Forced recording of stand shutdown caused by server shutdown");
+            await cachedData.StateChangeLock.WaitAsync();
+            try
+            {
+                StateHistory state = new()
+                {
+                    State = false,
+                    Time = DateTime.UtcNow.RoundToSeconds().AddSeconds(1)
+                };
+                context.StateHistory.Add(state);
+                await context.SaveChangesAsync();
+                await hubContext.Clients.All.StateChange(false);
+                cachedData.State = state;
+            }
+            catch (Exception ex) { logger.LogError(ex, "Failure to record stand shutdown caused by the server shutdown"); }
+            finally { cachedData.StateChangeLock.Release(); }
+        }
+
         logger.LogInformation("ConnectionLossDetectionService stopped");
     }
 }

@@ -12,13 +12,13 @@ CREATE TABLE refresh_tokens
     id uuid PRIMARY KEY,
     user_id integer NOT NULL REFERENCES users (id),
     device_uid uuid,
-    expires timestamp NOT NULL
+    expires timestamptz NOT NULL
 );
 
 create table measurements
 (
     sample_id int not null,
-    time timestamp not null,
+    time timestamptz not null,
     seconds_from_start int not null,
     duty_cycle smallint not null,
     t smallint not null,
@@ -35,7 +35,7 @@ select create_hypertable('measurements', 'time');
 
 create table state_history
 (
-    time timestamp not null,
+    time timestamptz not null,
     state boolean not null
 );
 select create_hypertable('state_history', 'time');
@@ -56,7 +56,7 @@ AS $$ BEGIN
 END $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_sample_period(p_sample_id int)
-    RETURNS table ( "from" timestamp, "to" timestamp )
+    RETURNS table ( "from" timestamptz, "to" timestamptz )
 AS $$ BEGIN
     return query select
                      (select time from measurements where sample_id = p_sample_id order by time limit 1) as "from",
@@ -64,7 +64,7 @@ AS $$ BEGIN
 END $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_sample_period()
-    RETURNS table ( sample_id int, "from" timestamp, "to" timestamp )
+    RETURNS table ( sample_id int, "from" timestamptz, "to" timestamptz )
 AS $$ BEGIN
     return query
         with t as (select * from get_unique_sample_ids())
