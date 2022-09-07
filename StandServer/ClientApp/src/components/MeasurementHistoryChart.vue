@@ -26,7 +26,7 @@ const props = defineProps({
 });
 
 const data = computed(() => props.showOffStateRecords ? props.data
-	: props.data.map(m => m.state ? m : ({ [props.xAxis]: m[props.xAxis] }))
+	: props.data.map(m => m.state !== 'off' ? m : ({ [props.xAxis]: m[props.xAxis] }))
 );
 
 const chartProps = computed(() => (
@@ -59,7 +59,7 @@ function fetchData(data, x1, x2) {
 		start: start === 0 ? start : start - 1,
 		count: end === data.length - 1 ? count : (start === 0 ? 0 : 1) + count + 1,
 		availableWidth: chart.width / 6,
-		skipIf: props.showOffStateRecords ? m => !m.state : null
+		skipIf: props.showOffStateRecords ? m => m.state === 'off' : null
 	});
 
 	dataCount.value = data.length;
@@ -102,7 +102,7 @@ onMounted(() => {
 				segment: {
 					borderColor: (ctx, value) => {
 						//console.dir(ctx);
-						return !ctx.p0.raw.state ? 'rgb(0,0,0,0.2)' : undefined
+						return ctx.p0.raw.state === 'off' ? 'rgb(0,0,0,0.2)' : undefined
 					}
 				},
 			} ]
@@ -247,9 +247,6 @@ function setData(data, saveZoom = false) {
 
 watch(() => props.data, (d) => setData(data.value));
 watch(() => props.showOffStateRecords, (d) => setData(data.value, true));
-// watch(data, (d) => console.log('data updated'));
-// watch(() => props.data, (d) => console.log('props data updated'));
-// watch(() => props.showOffStateRecords, (d) => console.log('showOffStateRecords updated'));
 
 </script>
 

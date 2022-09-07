@@ -2,10 +2,12 @@
 
 namespace StandServer.Models;
 
-[Table("measurements")/*, Keyless*/]
-public class Measurement
+public enum SampleState { Off, Work, Relax }
+
+[Table("measurements") /*, Keyless*/]
+public class Measurement : IIndependentMeasurement
 {
-    [Column("sample_id"), JsonIgnore] public int SampleId { get; set; }
+    [Column("sample_id")] public int SampleId { get; set; }
     [Column("time")] public DateTime Time { get; set; }
     [Column("seconds_from_start")] public int SecondsFromStart { get; set; }
     [Column("duty_cycle")] public short DutyCycle { get; set; }
@@ -16,9 +18,22 @@ public class Measurement
     [Column("work")] public short Work { get; set; }
     [Column("relax")] public short Relax { get; set; }
     [Column("frequency")] public short Frequency { get; set; }
-    
-    [Column("state")]
-    public bool State { get; set; }
+    [Column("state")] public SampleState State { get; set; }
+}
+
+public interface IIndependentMeasurement
+{
+    public DateTime Time { get; set; }
+    public int SecondsFromStart { get; set; }
+    public short DutyCycle { get; set; }
+    public short T { get; set; }
+    public short Tu { get; set; }
+    public short I { get; set; }
+    public short Period { get; set; }
+    public short Work { get; set; }
+    public short Relax { get; set; }
+    public short Frequency { get; set; }
+    public SampleState State { get; set; }
 }
 
 public sealed class MeasurementMap : ClassMap<Measurement>
@@ -27,6 +42,7 @@ public sealed class MeasurementMap : ClassMap<Measurement>
     {
         AutoMap(CultureInfo.InvariantCulture);
         Map(m => m.SampleId).Convert(m => $"{m.Value.SampleId:D8}");
-        Map(m => m.State).Convert(m => m.Value.State ? "yes" : "no");
+        Map(m => m.Time).Convert(m => 
+            m.Value.Time.ToLocalTime().ToString(CultureInfo.CurrentCulture));
     }
 }

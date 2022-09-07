@@ -8,6 +8,9 @@ public class ApplicationContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
     public DbSet<StateHistory> StateHistory { get; set; } = null!;
+    
+    static ApplicationContext()
+        => NpgsqlConnection.GlobalTypeMapper.MapEnum<SampleState>();
 
     public ApplicationContext() { }
 
@@ -29,5 +32,7 @@ public class ApplicationContext : DbContext
         modelBuilder.Entity<Measurement>().HasKey(m=> new { m.SampleId, m.Time });
         // Keyless are never tracked for changes in the DbContext and therefore are never inserted,
         // updated or deleted on the database.
+        
+        modelBuilder.HasPostgresEnum<SampleState>();
     }
 }

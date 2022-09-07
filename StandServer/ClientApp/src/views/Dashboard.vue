@@ -90,26 +90,25 @@ const store = useStore();
 const router = useRouter();
 
 const isDashboardReady = ref(false);
-const changePasswordModal = reactive({
-	show: false,
-	oldPassword: '',
-	oldPasswordShow: false,
-	newPassword: '',
-	newPasswordShow: false,
-	error: ''
-});
+const standState = ref(null);
 
 const sampleIds = computed(() => store.state.dashboard.sampleIds);
 
-const standState = ref(null);
 
+// SignalR
 let signalRConnectionRef = shallowRef(null);
 let signalROnReconnectActions = [];
 let signalRStartTimeout = null;
 let signalRManuallyDisconnect = false;
+let onNewMeasurementsCallbacks = [];
 
 let signalRConnection = null;
-provide("signalr", { signalRConnection: signalRConnectionRef, signalROnReconnectActions });
+
+provide("signalr", {
+	signalRConnection: signalRConnectionRef,
+	signalROnReconnectActions,
+	onNewMeasurementsCallbacks
+});
 
 async function signalRStart() {
 	try {
@@ -193,7 +192,28 @@ onMounted(async () => {
 
 	signalRConnection.on("Msg", data => console.log(data));
 
-	await signalRStart();
+	signalRConnection.on("NewMeasurements", async (measurements) => {
+		for (let cb of onNewMeasurementsCallbacks) {
+			let r = cb(measurements);
+			if (r instanceof Promise) await r;
+		}
+	});
+	onNewMeasurementsCallbacks.push(async(measurements) => {
+		await store.dispatch("newMeasurements", measurements);
+	});
+
+	let signalRStartPromise = signalRStart();
+	signalRStartPromise.then(async () => {
+		await store.dispatch('loadLastMeasurements');
+
+		const subscribeFunc = () => signalRConnection.send("SubscribeToMeasurements");
+		await subscribeFunc();
+		signalROnReconnectActions.push(subscribeFunc);
+
+		store.commit("setLastMeasurementsInitialized", true);
+	});
+
+	await signalRStartPromise;
 
 	isDashboardReady.value = true;
 })
@@ -201,6 +221,7 @@ onMounted(async () => {
 onUnmounted(async () => {
 	signalRManuallyDisconnect = true;
 	store.commit("setHomeViewVisited", false);
+	store.commit("setLastMeasurementsInitialized", false);
 
 	if (signalRStartTimeout) clearTimeout(signalRStartTimeout);
 	if (signalRConnection?.state !== signalR.HubConnectionState.Disconnected)
@@ -214,9 +235,20 @@ async function logout() {
 	await store.dispatch('logout');
 }
 
+// Change password
+
+const changePasswordModal = reactive({
+	show: false,
+	oldPassword: '',
+	oldPasswordShow: false,
+	newPassword: '',
+	newPasswordShow: false,
+	error: ''
+});
+
 async function tryChangePassword() {
 	try {
-		let res = await call_post('/change-password', {
+		await call_post('/change-password', {
 			old_password: changePasswordModal.oldPassword,
 			new_password: changePasswordModal.newPassword,
 		});

@@ -30,5 +30,5 @@ public interface IStandHubClient
 {
     Task Msg(string msg, CancellationToken cancellationToken = default);
     Task StateChange(bool newState, CancellationToken cancellationToken = default);
-    Task NewMeasurement(int sampleId, Measurement measurement, CancellationToken cancellationToken = default);
+    Task NewMeasurements(IEnumerable<Measurement> measurements, CancellationToken cancellationToken = default);
 }

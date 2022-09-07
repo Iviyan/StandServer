@@ -11,13 +11,3 @@ export const floorToDay = date => {
 	date.setHours(0);
 	return date;
 }
-
-Date.prototype.addDays = function (days) {
-	let date = new Date(this.valueOf());
-	date.setDate(date.getDate() + days);
-	return date;
-}
-
-export function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}

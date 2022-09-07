@@ -42,7 +42,7 @@ onMounted(() => {
 				},
 				segment: {
 					borderColor: (ctx, value) => {
-						return !ctx.p0.raw.state ? 'rgb(0,0,0,0.3)' : undefined
+						return ctx.p0.raw.state === 'off' ? 'rgb(0,0,0,0.3)' : undefined
 					}
 				},
             }]

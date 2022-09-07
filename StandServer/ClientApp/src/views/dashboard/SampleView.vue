@@ -88,8 +88,8 @@
 					<th>Частота, GHz</th>
 					<th>Состояние</th>
 				</tr>
-				<tr v-for="measurement in data" :class="{ 'dark-4': !measurement.state }">
-					<template v-if="measurement.state || showOffStateRecords">
+				<tr v-for="measurement in data" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
+					<template v-if="measurement.state !== 'off' || showOffStateRecords">
 						<td>{{ secondsToDateTime(measurement.time) }}</td>
 						<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
 						<td>{{ measurement.duty_cycle }}</td>
@@ -100,7 +100,7 @@
 						<td>{{ measurement.work }}</td>
 						<td>{{ measurement.relax }}</td>
 						<td>{{ measurement.frequency }}</td>
-						<td>{{ measurement.state ? "ON" : "OFF" }}</td>
+						<td>{{ measurement.state.toUpperCase() }}</td>
 					</template>
 				</tr>
 			</table>
@@ -125,7 +125,8 @@ import MeasurementsChart from '@/components/MeasurementHistoryChart.vue'
 import Pass from "@/components/Pass";
 import { call_get, call_delete, downloadFile } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
-import { secondsToInterval, secondsToDateTime, floorToDay, sleep } from "@/utils/timeUtils";
+import { secondsToInterval, secondsToDateTime, floorToDay } from "@/utils/timeUtils";
+import { sleep, isSampleOk } from "@/utils/utils";
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
 
@@ -314,6 +315,14 @@ watch(() => props.id, async id => {
 	font-weight: 500;
 	padding: 4px 6px;
 }
+
+.measurements-table tr.off { background-color: rgba(0, 0, 0, 0.03); }
+
+.measurements-table tr.work { background-color: rgba(0, 0, 255, 0.03); }
+
+.measurements-table tr.relax { background-color: rgba(0, 255, 0, 0.03); }
+
+.measurements-table tr.alarm { background-color: rgba(255, 0, 0, 0.08) !important; }
 
 /* sample graphs */
 

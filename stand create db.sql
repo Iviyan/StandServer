@@ -15,6 +15,8 @@ CREATE TABLE refresh_tokens
     expires timestamptz NOT NULL
 );
 
+CREATE TYPE sample_state AS ENUM ('off', 'work', 'relax');
+
 create table measurements
 (
     sample_id int not null,
@@ -28,7 +30,7 @@ create table measurements
     work smallint not null,
     relax smallint not null,
     frequency smallint not null,
-    state bool not null
+    state sample_state not null
 );
 create index measurements_sample_id_idx on measurements (sample_id);
 select create_hypertable('measurements', 'time');
@@ -81,5 +83,17 @@ AS $$ BEGIN
     return query
         select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
             ( select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements ) as q
+        where row <= count order by time asc;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_last_measurements(count int, sample_ids int[])
+    RETURNS setof measurements
+AS $$ BEGIN
+    return query
+        select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
+            (
+                select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements
+                where sample_id = any(sample_ids)
+            ) as q
         where row <= count order by time asc;
 END $$ LANGUAGE plpgsql;

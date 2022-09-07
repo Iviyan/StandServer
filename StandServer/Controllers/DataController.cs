@@ -23,7 +23,8 @@ public class DataController : Controller
             var currentState = data.State;
 
             if (currentState is { } && currentState.State == newState)
-                return Problem(statusCode: StatusCodes.Status404NotFound, title: $"Stand is already {(currentState.State ? "on" : "off")}");
+                return Problem(statusCode: StatusCodes.Status400BadRequest,
+                    title: $"Stand is already {(currentState.State ? "on" : "off")}");
 
             StateHistory stateRecord = new() { State = newState, Time = DateTime.UtcNow.RoundToSeconds() };
 
@@ -62,78 +63,21 @@ public class DataController : Controller
         return Ok(workPeriods);
     }
 
-    [HttpPost("samples"), Consumes("application/json"), AllowAnonymous]
-    public async Task<IActionResult> AddMeasurement(
-        [FromServices] ApplicationContext context, [FromServices] CachedData data,
-        [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
-        [FromBody] Measurement measurement, [FromQuery] bool silent = false)
-    {
-        measurement.Time = measurement.Time.ToUniversalTime();
-
-        if (silent)
-        {
-            context.Measurements.Add(measurement);
-            await context.SaveChangesAsync();
-            data.SampleIds.Add(measurement.SampleId);
-            return Ok();
-        }
-
-        await data.StateChangeLock.WaitAsync();
-        bool lockReleased = false;
-
-        try
-        {
-            StateHistory? newState = null;
-
-            if (data.State is { State: false } or null)
-            {
-                newState = new() { State = true, Time = measurement.Time };
-                context.StateHistory.Add(newState);
-            }
-            else
-            {
-                data.StateChangeLock.Release();
-                lockReleased = true;
-            }
-
-            context.Measurements.Add(measurement);
-            await context.SaveChangesAsync();
-
-            data.SampleIds.Add(measurement.SampleId);
-
-            if (newState is { })
-            {
-                data.State = newState;
-                await standHub.Clients.All.StateChange(newState.State);
-            }
-
-            data.LastActiveTime = DateTime.UtcNow;
-
-            await standHub.Clients.Group(StandHub.MeasurementsGroup).NewMeasurement(measurement.SampleId, measurement);
-
-            return Ok();
-        }
-        finally
-        {
-            if (!lockReleased) data.StateChangeLock.Release();
-        }
-    }
-
     [HttpPost("samples"), Consumes("text/plain"), AllowAnonymous]
-    public async Task<IActionResult> AddMeasurement(
+    public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
         List<Measurement> measurements = new();
-        foreach (string measurementRaw in raw.GetLines())
+        foreach (string measurementRaw in raw.GetLines(removeEmptyLines: true))
         {
             Measurement? measurement = ParseRawMeasurement(measurementRaw);
 
             if (measurement is null)
                 return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid format");
 
-            measurements.Add(measurement); //context.Measurements.Add(measurement);
+            measurements.Add(measurement);
         }
 
         if (measurements.Count == 0)
@@ -147,6 +91,10 @@ public class DataController : Controller
             return Ok();
         }
 
+        if (!measurements.Select(m => m.SampleId).All(new HashSet<int>().Add)) // check duplicates
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: "To add multiple measurements at once for one sample, use the silent parameter");
+
         await data.StateChangeLock.WaitAsync();
         bool lockReleased = false;
 
@@ -156,7 +104,15 @@ public class DataController : Controller
 
             if (data.State is { State: false } or null)
             {
-                newState = new() { State = true, Time = measurements[0].Time }; //DateTime.Now.GetKindUtc() };
+                DateTime now = DateTime.UtcNow;
+                DateTime stateOnTime = now.AddSeconds(-30) > measurements[0].Time
+                    ? now.RoundToSeconds()
+                    : measurements[0].Time;
+
+                if (data.State?.Time is { } lastStateTime && lastStateTime > stateOnTime)
+                    stateOnTime = lastStateTime.AddSeconds(1);
+
+                newState = new() { State = true, Time = stateOnTime };
                 context.StateHistory.Add(newState);
             }
             else
@@ -167,8 +123,8 @@ public class DataController : Controller
 
             await context.BulkInsertAsync(measurements);
 
-            foreach (int sampleId in measurements.Select(m => m.SampleId).Distinct())
-                data.SampleIds.Add(sampleId);
+            foreach (var measurement in measurements)
+                data.SampleIds.Add(measurement.SampleId);
 
             if (newState is { })
             {
@@ -177,8 +133,7 @@ public class DataController : Controller
                 await standHub.Clients.All.StateChange(newState.State);
             }
 
-            foreach (var measurement in measurements)
-                await standHub.Clients.All.NewMeasurement(measurement.SampleId, measurement);
+            await standHub.Clients.All.NewMeasurements(measurements);
 
             data.LastActiveTime = DateTime.UtcNow;
 
@@ -200,17 +155,14 @@ public class DataController : Controller
 
         if (!data.SampleIds.Contains(id))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
-
-        /*var measurements = await context.Connection.QueryAsync<Measurement>(
-            $"select * from measurements where sample_id = @sampleId and time >= @from and time <= @to order by time",
-            new { id, from, to });*/
+        
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
-            .OrderBy(m => m.Time).ToListAsync();
+            .OrderBy(m => m.Time).Cast<IIndependentMeasurement>().ToListAsync();
 
         return Ok(measurements);
     }
-    
+
     [HttpDelete("samples/{id:int}")]
     public async Task<IActionResult> DeleteSampleMeasurements(int id,
         [FromServices] DatabaseContext context, [FromServices] CachedData data)
@@ -220,7 +172,7 @@ public class DataController : Controller
 
         int delCount = await context.Connection.ExecuteAsync($"delete from measurements where sample_id = {id}");
         data.SampleIds.Remove(id);
-        
+
         await context.Connection.ExecuteAsync($"VACUUM ANALYZE measurements");
 
         return delCount > 0 ? Ok() : BadRequest();
@@ -229,14 +181,52 @@ public class DataController : Controller
     [HttpGet("samples/last")]
     public async Task<IActionResult> GetLastMeasurements(
         [FromServices] DatabaseContext context,
-        int count = 20)
+        [FromQuery(Name = "sample_ids")] string sampleIdsRaw = "active", int count = 20)
     {
         if (count <= 0)
             return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Count must be greater than 0");
 
-        var measurements = await context.Connection.QueryAsync<Measurement>(
-            $"select * from get_last_measurements(@count);",
-            new { count });
+        IEnumerable<Measurement> measurements;
+
+        if (sampleIdsRaw == "active")
+        {
+            var sampleIds = await context.Connection.QueryAsync<int>(
+                $"select sample_id from measurements " +
+                $"where time = (select time from measurements order by time desc limit 1)");
+
+            measurements = await context.Connection.QueryAsync<Measurement>(
+                $"select * from get_last_measurements(@count, @sampleIds);",
+                new { count, sampleIds });
+        }
+        else if (String.IsNullOrWhiteSpace(sampleIdsRaw) || sampleIdsRaw == "*")
+        {
+            measurements = await context.Connection.QueryAsync<Measurement>(
+                $"select * from get_last_measurements(@count);",
+                new { count });
+        }
+        else
+        {
+            List<int>? sampleIds = new();
+            foreach (var sampleIdRaw in sampleIdsRaw.Split(','))
+            {
+                if (int.TryParse(sampleIdRaw, out int sampleId))
+                    sampleIds.Add(sampleId);
+                else
+                {
+                    sampleIds = null;
+                    break;
+                }
+            }
+
+            if (sampleIds is null)
+                return Problem(statusCode: StatusCodes.Status400BadRequest,
+                    title:
+                    "Invalid sample_ids format, valid format: comma-separated enumeration, \"*\", \"active\" (default).");
+
+            measurements = await context.Connection.QueryAsync<Measurement>(
+                $"select * from get_last_measurements(@count, @sampleIds);",
+                new { count, sampleIds });
+        }
 
         return Ok(measurements
             .GroupBy(m => m.SampleId)
@@ -268,8 +258,8 @@ public class DataController : Controller
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
         DateTime? from = null, DateTime? to = null)
     {
-        from.SetKindUtc() ??= DateTime.MinValue;
-        to.SetKindUtc() ??= DateTime.MaxValue;
+        from ??= DateTime.MinValue;
+        to ??= DateTime.MaxValue;
 
         if (!data.SampleIds.Contains(id))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
@@ -332,7 +322,12 @@ public class DataController : Controller
             )) return null;
 
         if ((valueStartIndex = nextSeparatorIndex + 1) >= str.Length) return null;
-        bool state = s[valueStartIndex..].Trim(' ').SequenceEqual("ON");
+        SampleState? state = null;
+        var stateRaw = s[valueStartIndex..].Trim(' ');
+        if (stateRaw.SequenceEqual("O")) state = SampleState.Off;
+        if (stateRaw.SequenceEqual("W")) state = SampleState.Work;
+        if (stateRaw.SequenceEqual("R")) state = SampleState.Relax;
+        if (state is null) return null;
 
         /*Console.WriteLine($"Number: {number:d8}");
         Console.WriteLine($"DateTime: {dateTime}");
@@ -360,7 +355,7 @@ public class DataController : Controller
             Work = work,
             Relax = relax,
             Frequency = frequency,
-            State = state
+            State = state.Value
         };
 
         return measurement;

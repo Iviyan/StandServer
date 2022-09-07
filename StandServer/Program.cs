@@ -131,9 +131,7 @@ services.AddSpaStaticFiles(options => options.RootPath = "ClientApp/dist");
 services.AddHostedService<ClearOldRefreshTokensService>(); 
 
 // A service that records the moment when receiving data from the stand stops 
-services.AddHostedService<ConnectionLossDetectionService>(); 
-
-//services.AddHostedService<HubTestService>(); // SignalR Health Testing Service
+services.AddHostedService<ConnectionLossDetectionService>();
 
 var app = builder.Build();
 
