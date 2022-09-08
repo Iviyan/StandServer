@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, ref} from 'vue';
 import { useStore } from 'vuex'
 
 import MeasurementsChart from '@/components/MeasurementsRealtimeChart'
@@ -240,8 +240,8 @@ onMounted(async () => {
 	display: grid;
 	grid-template-rows: repeat(2, 1fr);
 	overflow: hidden;
-	margin-top: 8px;
 	column-gap: 8px;
+	grid-row-gap: 8px;
 }
 
 @media (min-width: 1000px) {

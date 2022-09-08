@@ -10,7 +10,7 @@
 			<button class="del-sample-btn" @click="showRemoveSampleModal = true">Удалить образец</button>
 		</div>
 
-		<vue-final-modal v-model="showSelectPeriodModal" classes="modal-container" content-class="modal-content">
+<!--		<vue-final-modal v-model="showSelectPeriodModal" classes="modal-container" content-class="modal-content">
 			<button class="modal-close" @click="showSelectPeriodModal = false">
 				<mdi-close />
 			</button>
@@ -36,7 +36,7 @@
 					</Pass>
 				</div>
 			</div>
-		</vue-final-modal>
+		</vue-final-modal>-->
 
 		<vue-final-modal v-model="showRemoveSampleModal" classes="modal-container" content-class="modal-content">
 			<button class="modal-close" @click="showSelectPeriodModal = false">
@@ -56,11 +56,11 @@
 
 		<div class="sample-history-graphs mt-8">
 			<div>
-				<measurements-chart :data="data" title="Температура" x-axis="time" y-axis="t"
+				<measurements-chart-2 :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t"
 									:show-off-state-records="showOffStateRecords" />
 			</div>
 			<div>
-				<measurements-chart :data="data" title="Ток" x-axis="time" y-axis="i"
+				<measurements-chart-2 :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i"
 									:show-off-state-records="showOffStateRecords" />
 			</div>
 		</div>
@@ -124,6 +124,7 @@ import { VueFinalModal } from 'vue-final-modal'
 import MdiClose from '@/components/MdiClose.vue'
 
 import MeasurementsChart from '@/components/MeasurementHistoryChart.vue'
+import MeasurementsChart2 from '@/components/MeasurementsChart'
 
 import Pass from "@/components/Pass";
 import { call_get, call_delete, downloadFile } from '@/utils/api';
@@ -148,7 +149,7 @@ const stateHistory = computed(() => {
 });
 
 const data = shallowRef([]);
-const showOffStateRecords = ref(false);
+const showOffStateRecords = ref(true);
 
 // Period
 

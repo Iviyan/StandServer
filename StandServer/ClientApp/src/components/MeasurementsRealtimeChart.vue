@@ -3,11 +3,12 @@
 </template>
 
 <script setup>
-import { ref, toRaw, onMounted, watch } from 'vue';
+import { onMounted, ref, toRaw, watch } from 'vue';
 
 import { Chart, registerables } from 'chart.js';
 import 'chartjs-adapter-luxon';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { secondsToDateTime, secondsToInterval } from "@/utils/timeUtils";
 
 Chart.register(...registerables);
 Chart.register(zoomPlugin);
@@ -89,6 +90,21 @@ onMounted(() => {
                 legend: {
                     display: true
                 },
+				tooltip: {
+					callbacks: {
+						title: context => context[0].raw[props.yAxis],
+						label: context => [
+							` work time: ${ secondsToInterval(context.raw.seconds_from_start) }`,
+							` datetime: ${ secondsToDateTime(context.raw.time) }`,
+							` t: ${ context.raw.t }`,
+							` i: ${ context.raw.i }`,
+							` S: ${ context.raw.duty_cycle }`,
+							` state: ${ context.raw.state }`,
+						],
+					},
+					displayColors: false,
+					backgroundColor: 'rgba(0, 0, 0, 0.7)'
+				},
                 zoom: {
                     limits: {
                         x: {
@@ -113,20 +129,18 @@ onMounted(() => {
     });
 });
 
-watch(props.data, (data) => {
+watch(() => props.data, (data) => {
     data = toRaw(data);
-    let min, max;
-    if (data.length > 0) {
-        min = data[0].x;
-        chart.options.scales.x.min = min;
+	if (data.length > 0) {
+		chart.options.scales.x.min = data[0].x;
         //chart.options.plugins.zoom.limits.x.min = min;
     }
     if (data.length > 1) {
-        max = data[data.length - 1].x;
-        chart.options.scales.x.max = max;
+		chart.options.scales.x.max = data[data.length - 1].x;
         //chart.options.plugins.zoom.limits.x.max = max;
     }
-    chart.update();
+	chart.data.datasets[0].data = data;
+    chart.update('none');
 });
 </script>
 
