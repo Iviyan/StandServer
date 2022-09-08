@@ -4,18 +4,10 @@
 
 		<div class="measurements-control-elements">
 			<input ref="datepickerEl" />
-			<div>
-				<div>
-					<!--<button class="all-period-btn" @click="getAndSetPeriod">Всё время</button>-->
-					<button class="select-period-btn" @click="showSelectPeriodModal = true">Выбрать из истории
-					</button>
-				</div>
-				<div class="mt-8">
-					<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
-					<button class="load-csv-btn ms-6" @click="loadCsv">Скачать (csv)</button>
-					<button class="load-csv-btn ms-6" @click="showRemoveSampleModal = true">Удалить образец</button>
-				</div>
-			</div>
+			<!--<button class="select-period-btn" @click="showSelectPeriodModal = true">Выбрать из истории</button>-->
+			<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
+			<button class="load-csv-btn" @click="loadCsv">Скачать (csv)</button>
+			<button class="del-sample-btn" @click="showRemoveSampleModal = true">Удалить образец</button>
 		</div>
 
 		<vue-final-modal v-model="showSelectPeriodModal" classes="modal-container" content-class="modal-content">
@@ -57,7 +49,7 @@
 			</div>
 		</vue-final-modal>
 
-		<label class="cb">
+		<label class="cb mt-8" style="display: block;">
 			<input type="checkbox" v-model="showOffStateRecords">
 			<span>Показывать измерения в выключенном состоянии</span>
 		</label>
@@ -74,19 +66,30 @@
 		</div>
 
 		<div class="mt-16">
-			<table class="measurements-table">
+			<Pass v-if="data.length > 0" :measurement="data.at(-1)" v-slot="{ measurement }">
+				<fieldset class="sample-info show-1000">
+					<legend>Скрытые данные из последнего измерения</legend>
+					<p class="show-500">tu, *C: {{ measurement.t }}</p>
+					<p class="show-900">Период, us: {{ measurement.period }}</p>
+					<p class="show-1000">Работа, min: {{ measurement.work }}</p>
+					<p class="show-1000">Отдых, min: {{ measurement.relax }}</p>
+					<p class="show-900">Частота, GHz: {{ measurement.frequency }}</p>
+				</fieldset>
+			</Pass>
+
+			<table class="measurements-table mt-16">
 				<tr>
 					<th>Дата и время</th>
 					<th>Время с начала работы</th>
 					<th class="nowrap">S, %</th>
 					<th class="nowrap">t, *C</th>
-					<th class="nowrap">tu, *C</th>
+					<th class="nowrap hide-500">tu, *C</th>
 					<th class="nowrap">I, mA</th>
-					<th>Период, us</th>
-					<th>Работа, min</th>
-					<th>Отдых, min</th>
-					<th>Частота, GHz</th>
-					<th>Состояние</th>
+					<th class="hide-900">Период, us</th>
+					<th class="hide-1000">Работа, min</th>
+					<th class="hide-1000">Отдых, min</th>
+					<th class="hide-900">Частота, GHz</th>
+					<th style="overflow-wrap: anywhere;">Состояние</th>
 				</tr>
 				<tr v-for="measurement in data" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 					<template v-if="measurement.state !== 'off' || showOffStateRecords">
@@ -94,12 +97,12 @@
 						<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
 						<td>{{ measurement.duty_cycle }}</td>
 						<td>{{ measurement.t }}</td>
-						<td>{{ measurement.tu }}</td>
+						<td class="hide-500">{{ measurement.tu }}</td>
 						<td>{{ measurement.i }}</td>
-						<td>{{ measurement.period }}</td>
-						<td>{{ measurement.work }}</td>
-						<td>{{ measurement.relax }}</td>
-						<td>{{ measurement.frequency }}</td>
+						<td class="hide-900">{{ measurement.period }}</td>
+						<td class="hide-1000">{{ measurement.work }}</td>
+						<td class="hide-1000">{{ measurement.relax }}</td>
+						<td class="hide-900">{{ measurement.frequency }}</td>
 						<td>{{ measurement.state.toUpperCase() }}</td>
 					</template>
 				</tr>
@@ -158,8 +161,6 @@ function setPeriod({ from, to }) {
 	datepicker.setStartDate(floorToDay(new Date(from)));
 	datepicker.setEndDate(floorToDay(new Date(to)));
 }
-
-const getAndSetPeriod = async () => setPeriod(await getSamplePeriod());
 
 // Period selecting via datepicker
 
@@ -284,20 +285,47 @@ watch(() => props.id, async id => {
 }
 
 .measurements-control-elements {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-auto-flow: column;
+	grid-template-columns: auto auto;
+	grid-template-rows: auto auto;
+	grid-column-gap: 8px;
+	grid-row-gap: 8px;
+	justify-content: start;
 }
 
-.measurements-control-elements > input {
-	align-self: flex-start;
-	margin: 0 8px 8px 0;
+.measurements-control-elements > * {
+	padding: 0 16px;
+	text-align: center;
 }
 
-.measurements-control-elements > div {
-	flex-grow: 1;
-	display: flex;
-	flex-direction: column;
+@media (max-width: 700px) {
+	.measurements-control-elements {
+		justify-content: normal;
+		grid-template-columns: 1fr 1fr;
+		grid-auto-flow: row;
+	}
+
+	.measurements-control-elements > input, .measurements-control-elements > .load-btn {
+		grid-column: span 2;
+	}
+
+	.measurements-control-elements > * {
+		padding: 6px 8px;
+	}
 }
+
+/* */
+
+.sample-info {
+	border: solid 1px #888;
+}
+
+.sample-info > p {
+	margin: 0;
+}
+
+/* */
 
 .measurements-table {
 	text-align: center;

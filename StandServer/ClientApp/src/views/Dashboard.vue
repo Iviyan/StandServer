@@ -273,6 +273,12 @@ main {
 	box-sizing: border-box;
 }
 
+@media (max-width: 700px) {
+	main {
+		margin-left: 0;
+	}
+}
+
 /* --- sidebar --- */
 
 .scrollbar {
@@ -280,6 +286,7 @@ main {
 	width: 100%;
 	overflow-y: scroll;
 	overflow-x: hidden;
+	margin-top: 20px;
 }
 
 /* Scrollbar Style */
@@ -288,8 +295,6 @@ main {
 	/* firefox */
 	scrollbar-width: thin;
 	scrollbar-color: #BFBFBF #F7F7F7;
-
-	margin-top: 20px;
 }
 
 .scrollbar::-webkit-scrollbar {
@@ -306,7 +311,7 @@ main {
 /* stand status */
 
 .stand-status {
-	margin: 0 0 12px 12px;
+	margin: 0 8px 12px;
 	border: 1px solid #aaa;
 	border-radius: 8px;
 	text-align: center;
@@ -335,8 +340,16 @@ main {
 	width: 220px;
 	overflow: hidden;
 	transition: width .2s linear;
-	transform: translateZ(0) scale(1, 1);
 	box-shadow: 1px 0 5px rgb(0 0 0 / 20%)
+}
+
+@media (max-width: 700px) {
+	.main-menu {
+		position: static;
+		max-height: 100%;
+		height: auto;
+		width: 100%;
+	}
 }
 
 .main-menu li {
@@ -367,7 +380,6 @@ main {
 	color: #444;
 	font-size: 14px;
 	text-decoration: none;
-	transform: translateZ(0) scale(1, 1);
 	transition: all .14s linear;
 	font-family: 'Strait', sans-serif;
 	border-top: 1px solid #f2f2f2;
@@ -375,7 +387,6 @@ main {
 }
 
 .main-menu .nav-text {
-
 	position: relative;
 	display: table-cell;
 	vertical-align: middle;

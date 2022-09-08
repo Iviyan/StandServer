@@ -11,8 +11,9 @@
 			</div>
 
 			<div class="sample-info mt-8" v-for="(measurement, sampleId) in lastSampleMeasurements"
-				 :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
-				<p class="id" @click="monitorSampleId = monitorSampleId === sampleId ? 0 : sampleId">{{ sampleIdFormat(sampleId) }}</p>
+				 :class="[measurement.state, { alarm: !isSampleOk(measurement) }]"
+				 @click="sampleClick(sampleId)">
+				<p class="id">{{ sampleIdFormat(sampleId) }}</p>
 				<p class="state">Состояние: {{ measurement.state }}</p>
 				<p class="t">t: {{ measurement.t }}</p>
 				<router-link class="open-link" :to="{ name: 'sample', params: { id: sampleId }}">Просмотр истории</router-link>
@@ -39,32 +40,45 @@
 					</div>
 				</div>
 				<div class="mt-16">
-					<table class="measurements-table">
+
+					<Pass :measurement="measurements.at(-1)" v-slot="{ measurement }">
+						<fieldset class="sample-info show-1000">
+							<legend>Скрытые данные из последнего измерения</legend>
+							<p class="show-500">S, %: {{ measurement.duty_cycle }}</p>
+							<p class="show-500">tu, *C: {{ measurement.t }}</p>
+							<p class="show-900">Период, us: {{ measurement.period }}</p>
+							<p class="show-1000">Работа, min: {{ measurement.work }}</p>
+							<p class="show-1000">Отдых, min: {{ measurement.relax }}</p>
+							<p class="show-900">Частота, GHz: {{ measurement.frequency }}</p>
+						</fieldset>
+					</Pass>
+
+					<table class="measurements-table mt-16">
 						<tr>
 							<th>Дата и время</th>
 							<th>Время с начала работы</th>
-							<th class="nowrap">S, %</th>
+							<th class="nowrap hide-500">S, %</th>
 							<th class="nowrap">t, *C</th>
-							<th class="nowrap">tu, *C</th>
+							<th class="nowrap hide-500">tu, *C</th>
 							<th class="nowrap">I, mA</th>
-							<th>Период, us</th>
-							<th>Работа, min</th>
-							<th>Отдых, min</th>
-							<th>Частота, GHz</th>
-							<th>Состояние</th>
+							<th class="hide-900">Период, us</th>
+							<th class="hide-1000">Работа, min</th>
+							<th class="hide-1000">Отдых, min</th>
+							<th class="hide-900">Частота, GHz</th>
+							<th style="overflow-wrap: anywhere;">Состояние</th>
 						</tr>
 						<tr v-for="measurement in new ReverseIterable(measurements)"
 							:class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 							<td>{{ secondsToDateTime(measurement.time) }}</td>
 							<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
-							<td>{{ measurement.duty_cycle }}</td>
+							<td class="hide-500">{{ measurement.duty_cycle }}</td>
 							<td>{{ measurement.t }}</td>
-							<td>{{ measurement.tu }}</td>
+							<td class="hide-500">{{ measurement.tu }}</td>
 							<td>{{ measurement.i }}</td>
-							<td>{{ measurement.period }}</td>
-							<td>{{ measurement.work }}</td>
-							<td>{{ measurement.relax }}</td>
-							<td>{{ measurement.frequency }}</td>
+							<td class="hide-900">{{ measurement.period }}</td>
+							<td class="hide-1000">{{ measurement.work }}</td>
+							<td class="hide-1000">{{ measurement.relax }}</td>
+							<td class="hide-900">{{ measurement.frequency }}</td>
 							<td>{{ measurement.state.toUpperCase() }}</td>
 						</tr>
 					</table>
@@ -103,6 +117,11 @@ const loaded = computed(() => store.state.dashboard.lastMeasurementsInitialized)
 
 const monitorSampleId = ref(0);
 
+function sampleClick(sampleId) {
+	if (document.getSelection().isCollapsed)
+		monitorSampleId.value = monitorSampleId.value === sampleId ? 0 : sampleId;
+}
+
 onMounted(async () => {
 	if (store.state.dashboard.homeViewVisited) return;
 	store.commit("setHomeViewVisited", true);
@@ -137,9 +156,12 @@ onMounted(async () => {
 	margin: 8px 0 0 0;
 	padding: 8px;
 	grid-template-columns: auto auto auto;
-	/*grid-template-rows: auto auto;*/
-	grid-column-gap: 30px;
+	grid-column-gap: 20px;
 	grid-row-gap: 4px;
+}
+
+.summary > .sample-info:hover {
+	cursor: pointer;
 }
 
 .summary > .sample-info > p {
@@ -149,12 +171,6 @@ onMounted(async () => {
 .summary > .sample-info > .id {
 	font-weight: 500;
 	margin-left: 4px;
-
-}
-
-.summary > .sample-info > .id:hover {
-	color: #666;
-	cursor: pointer;
 }
 
 .summary > .sample-info.off { background-color: rgba(0, 0, 0, 0.04); }
@@ -165,7 +181,7 @@ onMounted(async () => {
 
 .summary > .sample-info.alarm { background-color: rgba(255, 0, 0, 0.1) !important; }
 
-.summary > .sample-info > .open-link {
+.summary > .sample-info .open-link {
 	text-decoration: none;
 	border: solid 1px #aaa;
 	border-radius: 4px;
@@ -173,7 +189,9 @@ onMounted(async () => {
 	padding: 0 4px 1px;
 	margin: 0;
 	justify-self: flex-start;
+	align-self: start;
 	background-color: rgba(0,0,0,.02);
+	/* TODO: Fit block width to content when text wraps. (It seems impossible) */
 }
 
 .summary > .sample-info > .open-link:hover {
@@ -220,16 +238,33 @@ onMounted(async () => {
 
 .sample-preview > .charts {
 	display: grid;
-	grid-template-columns: repeat(2, 1fr);
+	grid-template-rows: repeat(2, 1fr);
 	overflow: hidden;
 	margin-top: 8px;
 	column-gap: 8px;
+}
+
+@media (min-width: 1000px) {
+	.sample-preview > .charts {
+		grid-template-columns: repeat(2, 1fr);
+		grid-template-rows: repeat(1, 1fr);
+	}
 }
 
 .sample-preview > .charts > div {
 	padding: 2px;
 	border: 1px solid #bbb;
 	min-width: 0; /* https://css-tricks.com/flexbox-truncated-text/ */
+}
+
+/**/
+
+.sample-info {
+	border: solid 1px #888;
+}
+
+.sample-info > p {
+	margin: 0;
 }
 
 /* measurements table */
@@ -258,14 +293,4 @@ onMounted(async () => {
 
 .measurements-table tr.alarm { background-color: rgba(255, 0, 0, 0.08) !important; }
 
-/* settings modal */
-
-.show-home-settings-btn-wrapper {
-	margin: 0 0 10px 0;
-	text-align: right;
-}
-
-.sample-ids-select > p {
-	margin: 0;
-}
 </style>

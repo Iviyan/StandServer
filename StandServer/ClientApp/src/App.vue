@@ -12,8 +12,8 @@ import { RequestError } from "@/exceptions";
 const store = useStore();
 const router = useRouter();
 
-onErrorCaptured((err,vm,info) => {
-	console.log(`error: ${err.toString()}\ninfo: ${info}`);
+onErrorCaptured((err, vm, info) => {
+	console.log(`error: ${ err.toString() }\ninfo: ${ info }`);
 	if (err instanceof RequestError) {
 		if (err.rfc7807) {
 			iziToast.error({
@@ -104,6 +104,7 @@ button, input, optgroup, select, textarea {
 	flex-shrink: 0;
 	padding: 1rem 0 0;
 }
+
 .modal__action > button {
 	padding: 0.25rem 0.5rem;
 	border-width: 1px;
@@ -112,6 +113,7 @@ button, input, optgroup, select, textarea {
 	background-image: none;
 	cursor: pointer;
 }
+
 .modal__action > button + button {
 	margin-left: 12px;
 }
@@ -184,7 +186,42 @@ button, input, optgroup, select, textarea {
 
 .mt-16 { margin-top: 16px; }
 
-.dark-4 { background-color: rgba(0, 0, 0, 0.04); }
-
 .nowrap { white-space: nowrap; }
+
+@media (max-width: 500px) {
+	.hide-500 { display: none; }
+}
+
+@media (max-width: 600px) {
+	.hide-600 { display: none; }
+}
+
+@media (max-width: 800px) {
+	.hide-800 { display: none; }
+}
+
+@media (max-width: 900px) {
+	.hide-900 { display: none; }
+}
+
+@media (max-width: 1000px) {
+	.hide-1000 { display: none; }
+}
+
+@media (min-width: 500px) {
+	.show-500 { display: none; }
+}
+
+@media (min-width: 700px) {
+	.show-700 { display: none; }
+}
+
+@media (min-width: 900px) {
+	.show-900 { display: none; }
+}
+
+@media (min-width: 1000px) {
+	.show-1000 { display: none; }
+}
+
 </style>
