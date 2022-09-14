@@ -37,6 +37,10 @@ var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
 var configuration = builder.Configuration;
 
+configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"secrets.{builder.Environment.EnvironmentName}.json",
+    optional: true, reloadOnChange: true);
+
 // Database configuration
 
 string connection = builder.Configuration.GetConnectionString("PgsqlConnection");
@@ -132,6 +136,12 @@ services.AddHostedService<ClearOldRefreshTokensService>();
 
 // A service that records the moment when receiving data from the stand stops 
 services.AddHostedService<ConnectionLossDetectionService>();
+
+// Notifications configuration
+services.Configure<NotificationsConfig>(configuration.GetSection(NotificationsConfig.SectionName));
+
+// Telegram notification service
+services.AddTelegramService();
 
 var app = builder.Build();
 

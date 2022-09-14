@@ -1,4 +1,6 @@
-﻿namespace StandServer.Controllers;
+﻿using StandServer.Services;
+
+namespace StandServer.Controllers;
 
 [ApiController, Route("/api"), Authorize]
 public class DataController : Controller
@@ -67,6 +69,7 @@ public class DataController : Controller
     public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
+        [FromServices] ITelegramService telegramService,
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
         List<Measurement> measurements = new();
@@ -131,6 +134,13 @@ public class DataController : Controller
                 await context.SaveChangesAsync();
                 data.State = newState;
                 await standHub.Clients.All.StateChange(newState.State);
+            }
+
+            if (telegramService.IsOk)
+            {
+                foreach (var measurement in measurements)
+                    if (measurement is { State: not SampleState.Work, I: >= 100 })
+                        await telegramService.SendAlarm(measurement);
             }
 
             await standHub.Clients.All.NewMeasurements(measurements);
