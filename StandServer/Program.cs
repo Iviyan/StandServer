@@ -1,5 +1,6 @@
 global using System.Text;
 global using System.Data;
+global using System.Net.Mime;
 global using System.Text.Json;
 global using System.Security.Claims;
 global using System.IdentityModel.Tokens.Jwt;
@@ -28,8 +29,10 @@ global using StandServer.Database;
 global using StandServer.Models;
 global using StandServer.Utils;
 global using StandServer.Hubs;
+using System.Diagnostics;
 using StandServer.Configuration;
 using StandServer;
+using StandServer.Controllers;
 using StandServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,12 +42,19 @@ var configuration = builder.Configuration;
 
 configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true)
     .AddJsonFile($"secrets.{builder.Environment.EnvironmentName}.json",
-    optional: true, reloadOnChange: true);
+        optional: true, reloadOnChange: true);
 
 // Database configuration
 
 string connection = builder.Configuration.GetConnectionString("PgsqlConnection");
-services.AddDbContext<ApplicationContext>(options => options.UseNpgsql(connection));
+services.AddDbContextPool<ApplicationContext>(options =>
+{
+    options.UseNpgsql(connection);
+#if DEBUG
+    options.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
+        .EnableSensitiveDataLogging();
+#endif
+}, poolSize: 16);
 services.AddSingleton<DatabaseSource>();
 services.AddScoped<DatabaseContext>();
 
@@ -91,7 +101,7 @@ services.AddControllers(options =>
 // JWT configuration
 
 services.Configure<JwtConfig>(configuration.GetSection(JwtConfig.SectionName));
-services.Configure<StandInfo>(configuration.GetSection(StandInfo.SectionName));
+services.Configure<StandInfoConfig>(configuration.GetSection(StandInfoConfig.SectionName));
 
 var jwtConfig = configuration.GetSection(JwtConfig.SectionName).Get<JwtConfig>();
 
@@ -132,7 +142,7 @@ services.AddScoped<RequestData>(); // Information about the user who made the re
 services.AddSpaStaticFiles(options => options.RootPath = "ClientApp/dist");
 
 // A service that removes obsolete refresh tokens
-services.AddHostedService<ClearOldRefreshTokensService>(); 
+services.AddHostedService<ClearOldRefreshTokensService>();
 
 // A service that records the moment when receiving data from the stand stops 
 services.AddHostedService<ConnectionLossDetectionService>();
@@ -146,6 +156,24 @@ services.AddTelegramService();
 var app = builder.Build();
 
 Console.WriteLine("Current culture: " + CultureInfo.CurrentCulture);
+
+// Creating a user if there are no users in the system.
+using (var scope = app.Services.CreateScope())
+{
+    var efContext = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+    if (!await efContext.Users.AnyAsync())
+    {
+        var firstUser = configuration.GetSection(FirstUserConfig.SectionName).Get<FirstUserConfig>();
+        User user = new()
+        {
+            Login = firstUser.Login,
+            Password = AccountController.GetHashPassword(firstUser.Password),
+            IsAdmin = true
+        };
+        efContext.Users.Add(user);
+        await efContext.SaveChangesAsync();
+    }
+}
 
 // Loading cache data
 var loadCacheService = app.Services.GetRequiredService<LoadCacheService>();
@@ -179,6 +207,7 @@ app.Use(async (context, next) =>
     {
         requestData.UserId = int.Parse(context.User.FindFirst(JwtRegisteredClaimNames.Sub)!.Value);
         requestData.UserLogin = context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
+        requestData.IsAdmin = Boolean.TryParse(context.User.FindFirst("IsAdmin")!.Value, out bool val) && val;
     }
 
     await next();

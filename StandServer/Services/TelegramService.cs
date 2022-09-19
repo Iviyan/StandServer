@@ -1,8 +1,13 @@
-﻿using StandServer.Configuration;
+﻿using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Identity;
+using StandServer.Configuration;
+using StandServer.Controllers;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TelegramUser = Telegram.Bot.Types.User;
+using User = StandServer.Models.User;
 
 namespace StandServer.Services;
 
@@ -12,8 +17,11 @@ public interface ITelegramService
     TelegramBotClient? BotClient { get; }
     Task SendAlarm(Measurement measurement);
 
-    Task ExecuteIfOk(Func<TelegramBotClient, Task> action) 
+    Task ExecuteIfOk(Func<TelegramBotClient, Task> action)
         => BotClient is { } ? action(BotClient) : Task.CompletedTask;
+    
+    Task<T?> ExecuteIfOk<T>(Func<TelegramBotClient, Task<T?>> action)
+        => BotClient is { } ? action(BotClient) : Task.FromResult(default(T));
 }
 
 public static class MqttServiceExtension
@@ -26,11 +34,13 @@ public static class MqttServiceExtension
     }
 }
 
+[SuppressMessage("ReSharper", "ConvertTypeCheckPatternToNullCheck")]
 public class TelegramService : BackgroundService, ITelegramService
 {
     private readonly ILogger<TelegramService> logger;
     private readonly NotificationsConfig notificationsConfig;
     private readonly IServiceProvider serviceProvider;
+    private readonly IServiceScope scope;
 
     public TelegramBotClient? BotClient { get; private set; }
     public bool IsOk => BotClient is { };
@@ -43,7 +53,10 @@ public class TelegramService : BackgroundService, ITelegramService
         this.logger = logger;
         this.notificationsConfig = notificationsOptions.Value;
         this.serviceProvider = serviceProvider;
+        scope = serviceProvider.CreateScope();
     }
+
+    private ApplicationContext context = null!;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -71,21 +84,25 @@ public class TelegramService : BackgroundService, ITelegramService
                 throw new ConfigurationException("Telegram token is invalid");
             }
 
-            ExecuteCoreAsync(stoppingToken);
+            context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+
+            BotClient!.StartReceiving(
+                updateHandler: HandleUpdateAsync,
+                pollingErrorHandler: HandlePollingErrorAsync,
+                receiverOptions: new()
+                {
+                    AllowedUpdates = new[]
+                    {
+                        UpdateType.Message,
+                        UpdateType.CallbackQuery,
+                    }
+                },
+                cancellationToken: stoppingToken);
         }
         finally
         {
-            logger.LogInformation("TelegramService stopped");
+            logger.LogInformation("TelegramService initialization completed");
         }
-    }
-
-    private void ExecuteCoreAsync(CancellationToken stoppingToken)
-    {
-        BotClient!.StartReceiving(
-            updateHandler: HandleUpdateAsync,
-            pollingErrorHandler: HandlePollingErrorAsync,
-            receiverOptions: new(),
-            cancellationToken: stoppingToken);
     }
 
     private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
@@ -105,19 +122,226 @@ public class TelegramService : BackgroundService, ITelegramService
     private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update,
         CancellationToken cancellationToken)
     {
-        switch (update)
+        try
         {
-            case { Message: { } message } when message.Text is { } text:
+            switch (update)
             {
-                if (text.StartsWith("/test"))
+                case { Message: Message message } when message.Chat.Type == ChatType.Private:
                 {
-                    await BotClient!.SendTextMessageAsync(message.Chat, message.Text["/test".Length..].Trim(),
-                        cancellationToken: cancellationToken);
+                    try
+                    {
+                        await HandleNewMessageAsync(update, message, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        logger.LogError(ex, "Error handling telegram bot command");
+                        await BotClient!.SendTextMessageAsync(message.Chat, "Ошибка выполнения команды",
+                            cancellationToken: cancellationToken);
+                    }
+
+                    break;
                 }
-            } break;
+                /*case { CallbackQuery: CallbackQuery callbackQuery }:
+                    await HandleCallbackQueryAsync(update, callbackQuery, cancellationToken);
+                    break;*/
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Error handling telegram bot event");
         }
     }
 
+    private async Task HandleNewMessageAsync(Update update, Message message,
+        CancellationToken cancellationToken)
+    {
+        if (message.Text is not string text) return;
+        if (message.From is not TelegramUser sender) return;
+
+        (string command, string? arg) = ParseCommand(text);
+
+        (User? user, bool init) senderUser = (null, false);
+
+        async Task<User?> GetUser()
+        {
+            if (senderUser.init) return senderUser.user;
+            senderUser = (await context.Users.AsNoTracking().Where(u => u.TelegramUserId == sender.Id)
+                .Select(u => new User
+                {
+                    Id = u.Id, Login = u.Login,
+                    IsAdmin = u.IsAdmin, TelegramUserId = u.TelegramUserId
+                })
+                .FirstOrDefaultAsync(cancellationToken), true);
+            return senderUser.user;
+        }
+
+        async Task<User?> CheckAuth()
+        {
+            User? currentUser = await GetUser();
+
+            if (currentUser == null)
+                await ReplyByTextMessage($"Для выполнения команды необходимо авторизоваться.");
+
+            return currentUser;
+        }
+
+        Task<Message> ReplyByTextMessage(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
+            cancellationToken: cancellationToken);
+
+        if (command == "/start")
+        {
+            await BotClient!.SetMyCommandsAsync(botCommandsEn, cancellationToken: cancellationToken);
+            await BotClient!.SetMyCommandsAsync(botCommandsRu, languageCode: "ru",
+                cancellationToken: cancellationToken);
+
+            await ReplyByTextMessage(StartCommandText);
+        }
+        else if (command == "/getuserid")
+        {
+            await ReplyByTextMessage(sender.Id.ToString());
+        }
+        else if (command == "/login")
+        {
+            int spacePos = (arg ?? "").IndexOf(' ');
+            if (spacePos == -1)
+            {
+                await ReplyByTextMessage("Неверный формат команды");
+                return;
+            }
+
+            var (login, password) = (arg![..spacePos], arg[(spacePos + 1)..]);
+
+            User? currentUser = await GetUser();
+
+            User? user = await context.Users.FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
+            if (user == null)
+            {
+                await ReplyByTextMessage("Invalid login");
+                return;
+            }
+
+            var passwordVerificationResult = AccountController.PasswordHasher.VerifyHashedPassword(null!,
+                user.Password, password);
+            if (passwordVerificationResult == PasswordVerificationResult.Failed)
+            {
+                await ReplyByTextMessage("Invalid password");
+                return;
+            }
+
+            if (user.TelegramUserId != null)
+            {
+                await ReplyByTextMessage(
+                    $"Пользователь {login} уже привязан к telegram аккаунту с id {user.TelegramUserId}.");
+                return;
+            }
+
+            await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken))
+            {
+                if (currentUser != null)
+                {
+                    await context.Users.Where(u => u.Id == currentUser.Id)
+                        .BatchUpdateAsync(u => new User { TelegramUserId = null },
+                            cancellationToken: cancellationToken);
+                }
+
+                await context.Users.Where(u => u.Id == user.Id)
+                    .BatchUpdateAsync(u => new User { TelegramUserId = sender.Id },
+                        cancellationToken: cancellationToken);
+
+                await ReplyByTextMessage(
+                    $"Успешная авторизация.\n*{login}* - _{sender.Id}_.");
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+        }
+        else if (command == "/logout")
+        {
+            if (await CheckAuth() is not User currentUser) return;
+
+            await context.Users.Where(u => u.Id == currentUser.Id)
+                .BatchUpdateAsync(u => new User { TelegramUserId = null },
+                    cancellationToken: cancellationToken);
+        }
+        else if (command == "/getlink")
+        {
+            if (await CheckAuth() is not User currentUser) return;
+
+            ChatInviteLink link = await BotClient!.CreateChatInviteLinkAsync(notificationsConfig.Telegram!.ChannelId,
+                name: sender.Username is { } username
+                    ? $"{username.Truncate(32 - 13)}'s invitation"
+                    : $"User {sender.Id} invitation",
+                expireDate: DateTime.Now.AddHours(1),
+                memberLimit: 1,
+                cancellationToken: cancellationToken);
+
+            await BotClient!.SendTextMessageAsync(message.Chat, link.InviteLink,
+                cancellationToken: cancellationToken);
+        }
+        else if (command == "/state")
+        {
+            if (await CheckAuth() is not User currentUser) return;
+
+            var connection = context.Database.GetDbConnection();
+
+            var sampleIds = await connection.QueryAsync<int>(
+                $"select sample_id from measurements " +
+                $"where time = (select time from measurements order by time desc limit 1)");
+
+            var measurements = (await connection.QueryAsync<Measurement>(
+                $"select * from get_last_measurements(@count, @sampleIds);",
+                new { count = 1, sampleIds })).ToArray();
+
+            string samplesStateText = measurements.Length == 0
+                ? "Данные отсутствуют"
+                : measurements[0].Time.ToString(CultureInfo.CurrentCulture).Replace(".", @"\.") + "\n"
+                + String.Join('\n', measurements.Select(m =>
+                    $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
+
+            await BotClient!.SendTextMessageAsync(message.Chat, samplesStateText,
+                parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+        }
+        else if (command == "/test")
+        {
+            await ReplyByTextMessage(message.Text["/test".Length..].Trim());
+        }
+    }
+
+    private const string StartCommandText =
+        @"Для работы с ботом необходимо авторизоваться.
+
+/login [username] [password] - авторизация
+/logout - отвязать telegram аккаунт от пользователя
+/getlink - канал с уведомлениями стенда
+/state - состояние образцов";
+
+    private static readonly BotCommand[] botCommandsRu =
+    {
+        new() { Command = "/start", Description = "Описание бота и список команд" },
+        new() { Command = "/login", Description = "Вход в аккаунт" },
+        new() { Command = "/logout", Description = "Отвязать telegram аккаунт от пользователя" },
+        new() { Command = "/state", Description = "Состояние образцов" },
+        new() { Command = "/getlink", Description = "Канал с уведомлениями стенда" },
+        new() { Command = "/getuserid", Description = "Получить id пользователя" },
+    };
+
+    private static readonly BotCommand[] botCommandsEn =
+    {
+        new() { Command = "/start", Description = "Bot description and list of commands" },
+        new() { Command = "/login", Description = "Login" },
+        new() { Command = "/logout", Description = "Detach the telegram account from the user" },
+        new() { Command = "/state", Description = "Get samples state" },
+        new() { Command = "/getlink", Description = "Channel with stand notifications" },
+        new() { Command = "/getuserid", Description = "Get user id" },
+    };
+
+    /*private async Task HandleCallbackQueryAsync(Update update, CallbackQuery callbackQuery,
+        CancellationToken cancellationToken)
+    {
+        if (callbackQuery.Data is not string data) return;
+
+        (string command, string? arg) = ParseCommand(data);
+    }*/
+    
     public async Task SendAlarm(Measurement measurement)
     {
         await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
@@ -125,8 +349,21 @@ public class TelegramService : BackgroundService, ITelegramService
             $"{measurement.Time.ToString(CultureInfo.CurrentCulture).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}\n",
             parseMode: ParseMode.MarkdownV2);
     }
-    
-    static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0') }" +
+
+    static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0')}" +
                                               $":{(s % 3600 / 60 | 0).ToString().PadLeft(2, '0')}" +
                                               $":{(s % 60).ToString().PadLeft(2, '0')}";
+
+    static (string command, string? arg) ParseCommand(string s)
+    {
+        int spacePos = s.IndexOf(' ');
+        if (spacePos == -1) return (s, null);
+        return (s[..spacePos], s[(spacePos + 1)..]);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        scope.Dispose();
+    }
 }

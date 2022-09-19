@@ -213,6 +213,9 @@ function setData(rawData) {
 	if (max && max !== min)
 		chart.options.scales.x.max = max;
 
+	chart.options.plugins.zoom.limits.x.min = min ?? 'original';
+	chart.options.plugins.zoom.limits.x.max = max ?? 'original';
+
 	chart.data.datasets[0].data = source.length > 1 ? fetchData(source, min, max) : source;
 	if (source?.length <= 1) {
 		dataCount.value = dataSegmentCount.value = dataVisibleCount.value = source?.length ?? 0;

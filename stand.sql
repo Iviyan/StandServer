@@ -4,13 +4,15 @@ CREATE TABLE users
 (
     id serial PRIMARY KEY,
     login varchar(30) UNIQUE NOT NULL,
-    password varchar(30) NOT NULL
+    password text NOT NULL,
+    is_admin boolean NOT NULL,
+    telegram_user_id bigint NULL
 );
 
 CREATE TABLE refresh_tokens
 (
     id uuid PRIMARY KEY,
-    user_id integer NOT NULL REFERENCES users (id),
+    user_id integer NOT NULL REFERENCES users (id) on delete cascade,
     device_uid uuid,
     expires timestamptz NOT NULL
 );
@@ -165,3 +167,9 @@ using case
 end;
  */
 
+/*
+ALTER TABLE refresh_tokens
+    DROP CONSTRAINT refresh_tokens_user_id_fkey,
+    ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE;
+*/

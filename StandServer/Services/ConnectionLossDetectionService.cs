@@ -1,4 +1,5 @@
-﻿using StandServer.Configuration;
+﻿using System.Diagnostics.CodeAnalysis;
+using StandServer.Configuration;
 
 namespace StandServer.Services;
 
@@ -8,7 +9,7 @@ public class ConnectionLossDetectionService : BackgroundService
     private readonly IServiceProvider serviceProvider;
     private readonly CachedData cachedData;
     private readonly IHubContext<StandHub, IStandHubClient> hubContext;
-    private readonly StandInfo standInfo;
+    private readonly StandInfoConfig standInfo;
 
     private readonly PeriodicTimer timer;
 
@@ -19,7 +20,7 @@ public class ConnectionLossDetectionService : BackgroundService
         IServiceProvider serviceProvider,
         CachedData cachedData,
         IHubContext<StandHub, IStandHubClient> hubContext,
-        IOptions<StandInfo> standInfo)
+        IOptions<StandInfoConfig> standInfo)
     {
         this.logger = logger;
         this.serviceProvider = serviceProvider;
@@ -30,6 +31,7 @@ public class ConnectionLossDetectionService : BackgroundService
         timer = new(TimeSpan.FromSeconds(10));
     }
 
+    [SuppressMessage("ReSharper", "MethodSupportsCancellation")]
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("ConnectionLossDetectionService started");

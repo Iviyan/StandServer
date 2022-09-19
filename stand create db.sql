@@ -4,13 +4,15 @@ CREATE TABLE users
 (
     id serial PRIMARY KEY,
     login varchar(30) UNIQUE NOT NULL,
-    password varchar(30) NOT NULL
+    password text NOT NULL,
+    is_admin boolean NOT NULL,
+    telegram_user_id bigint NULL
 );
 
 CREATE TABLE refresh_tokens
 (
     id uuid PRIMARY KEY,
-    user_id integer NOT NULL REFERENCES users (id),
+    user_id integer NOT NULL REFERENCES users (id)  on delete cascade,
     device_uid uuid,
     expires timestamptz NOT NULL
 );
@@ -41,8 +43,6 @@ create table state_history
     state boolean not null
 );
 select create_hypertable('state_history', 'time');
-
-insert into users(login, password) values('admin', 'admin');
 
 CREATE OR REPLACE FUNCTION get_unique_sample_ids() RETURNS table(sample_id int)
 AS $$ BEGIN

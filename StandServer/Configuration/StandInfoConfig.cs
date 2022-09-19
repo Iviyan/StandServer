@@ -1,6 +1,6 @@
 ﻿namespace StandServer.Configuration;
 
-public class StandInfo
+public class StandInfoConfig
 {
     public const string SectionName = "StandInfo";
     

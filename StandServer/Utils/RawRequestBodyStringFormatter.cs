@@ -7,36 +7,39 @@ public class RawRequestBodyFormatter : InputFormatter
 {
     public RawRequestBodyFormatter()
     {
-        SupportedMediaTypes.Add(new MediaTypeHeaderValue("text/plain"));
-        SupportedMediaTypes.Add(new MediaTypeHeaderValue("application/octet-stream"));
+        SupportedMediaTypes.Add(new MediaTypeHeaderValue(MediaTypeNames.Text.Plain));
+        SupportedMediaTypes.Add(new MediaTypeHeaderValue(MediaTypeNames.Application.Octet));
     }
 
     public override bool CanRead(InputFormatterContext context)
     {
         if (context == null) throw new ArgumentNullException(nameof(context));
 
-        var contentType = context.HttpContext.Request.ContentType;
-        if (string.IsNullOrEmpty(contentType) || contentType == "text/plain" ||
-            contentType == "application/octet-stream")
+        if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var contentType)) return false;
+
+        if (contentType.MediaType == MediaTypeNames.Text.Plain 
+            || contentType.MediaType == MediaTypeNames.Application.Octet)
             return true;
-            
+
         return false;
     }
 
-        
+
     public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context)
     {
         var request = context.HttpContext.Request;
-        var contentType = context.HttpContext.Request.ContentType;
+        
+        if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var contentType))
+            return await InputFormatterResult.FailureAsync();
 
-
-        if (string.IsNullOrEmpty(contentType) || contentType == "text/plain")
+        if (contentType.MediaType == MediaTypeNames.Text.Plain )
         {
             using var reader = new StreamReader(request.Body);
             var content = await reader.ReadToEndAsync();
             return await InputFormatterResult.SuccessAsync(content);
         }
-        if (contentType == "application/octet-stream")
+
+        if (contentType.MediaType == MediaTypeNames.Application.Octet)
         {
             using var ms = new MemoryStream(2048);
             await request.Body.CopyToAsync(ms);
@@ -57,13 +60,11 @@ public static class HttpRequestExtensions
     /// <param name="encoding">Optional - Encoding, defaults to UTF8</param>
     /// <param name="inputStream">Optional - Pass in the stream to retrieve from. Other Request.Body</param>
     /// <returns></returns>
-    public static async Task<string> GetRawBodyStringAsync(this HttpRequest request, Encoding? encoding = null, Stream? inputStream = null)
+    public static async Task<string> GetRawBodyStringAsync(this HttpRequest request, Encoding? encoding = null,
+        Stream? inputStream = null)
     {
-        if (encoding == null)
-            encoding = Encoding.UTF8;
-
-        if (inputStream == null)
-            inputStream = request.Body;
+        encoding ??= Encoding.UTF8;
+        inputStream ??= request.Body;
 
         using StreamReader reader = new StreamReader(inputStream, encoding);
         return await reader.ReadToEndAsync();
@@ -77,8 +78,7 @@ public static class HttpRequestExtensions
     /// <returns></returns>
     public static async Task<byte[]> GetRawBodyBytesAsync(this HttpRequest request, Stream? inputStream = null)
     {
-        if (inputStream == null)
-            inputStream = request.Body;
+        inputStream ??= request.Body;
 
         using var ms = new MemoryStream(2048);
         await inputStream.CopyToAsync(ms);

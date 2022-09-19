@@ -12,20 +12,8 @@ public class ApplicationContext : DbContext
     static ApplicationContext()
         => NpgsqlConnection.GlobalTypeMapper.MapEnum<SampleState>();
 
-    public ApplicationContext() { }
-
     public ApplicationContext(DbContextOptions<ApplicationContext> options)
         : base(options) { }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        base.OnConfiguring(optionsBuilder);
-#if DEBUG
-        //Console.WriteLine($"\nApplicationContext configuring {ContextId.InstanceId}\n");
-        optionsBuilder.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
-            .EnableSensitiveDataLogging();
-#endif
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

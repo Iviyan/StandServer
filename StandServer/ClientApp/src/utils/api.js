@@ -9,7 +9,13 @@ async function refreshToken() {
 		const response = await fetch('/refresh-token', {
 			method: 'POST'
 		});
-		const json = await response.json();
+		const text = await response.text();
+		if (text.length === 0) {
+			console.error('Refresh token update error.\n', response);
+			store.commit('logout');
+			return;
+		}
+		const json = JSON.parse(text);
 
 		console.log('Refresh token update: ', response, 'json: ', json)
 		if (response.ok) {

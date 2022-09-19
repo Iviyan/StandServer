@@ -1,12 +1,15 @@
-﻿using StandServer.Configuration;
+﻿using Microsoft.AspNetCore.Identity;
+using StandServer.Configuration;
 
 namespace StandServer.Controllers;
 
 [ApiController]
 public class AccountController : ControllerBase
 {
+    public static readonly PasswordHasher<User> PasswordHasher = new();
+
     private readonly ILogger<AccountController> logger;
-    private JwtConfig jwtConfig;
+    private readonly JwtConfig jwtConfig;
 
     public AccountController(ILogger<AccountController> logger, IOptions<JwtConfig> jwtConfig)
     {
@@ -19,15 +22,18 @@ public class AccountController : ControllerBase
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
     {
-        User? user =
-            await context.Users.FirstOrDefaultAsync(x => x.Login == model.Login && x.Password == model.Password);
+        User? user = await context.Users.FirstOrDefaultAsync(x => x.Login == model.Login);
         if (user == null)
-            return Problem(title: "Invalid login or password", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: "Invalid login", statusCode: StatusCodes.Status401Unauthorized);
+
+        var passwordVerificationResult = PasswordHasher.VerifyHashedPassword(null!, user.Password, model.Password);
+        if (passwordVerificationResult == PasswordVerificationResult.Failed)
+            return Problem(title: "Invalid password", statusCode: StatusCodes.Status401Unauthorized);
 
         string jwt = CreateJwtToken(user);
 
         RefreshToken? oldRefreshToken =
-            context.RefreshTokens.Where(t => t.DeviceUid == requestData.DeviceUid).FirstOrDefault();
+            context.RefreshTokens.FirstOrDefault(t => t.DeviceUid == requestData.DeviceUid);
         if (oldRefreshToken is { }) context.RefreshTokens.Remove(oldRefreshToken);
 
         RefreshToken refreshToken = new()
@@ -57,49 +63,33 @@ public class AccountController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("/register")]
+    [HttpPost("/register"), Authorize]
     public async Task<IActionResult> Register([FromBody] RegisterModel model,
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
     {
-        if (await context.Users.AnyAsync(x => x.Login == model.Login))
-            return Problem(title: "The user with this login already exists", statusCode: StatusCodes.Status400BadRequest);
+        if (!requestData.IsAdmin)
+            return Problem(title: "You must be an admin to create a user", statusCode: StatusCodes.Status403Forbidden);
 
-        User user = new() { Login = model.Login!, Password = model.Password! };
+        if (await context.Users.AnyAsync(x => x.Login == model.Login))
+            return Problem(title: "The user with this login already exists",
+                statusCode: StatusCodes.Status400BadRequest);
+
+        User user = new()
+        {
+            Login = model.Login!,
+            Password = GetHashPassword(model.Password!),
+            IsAdmin = model.IsAdmin
+        };
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        string jwt = CreateJwtToken(user);
-
-        RefreshToken? oldRefreshToken =
-            await context.RefreshTokens.FirstOrDefaultAsync(t => t.DeviceUid == requestData.DeviceUid);
-        if (oldRefreshToken is { }) context.RefreshTokens.Remove(oldRefreshToken);
-
-        RefreshToken refreshToken = new()
-        {
-            UserId = user.Id,
-            Expires = DateTime.UtcNow + TimeSpan.FromDays(30),
-            DeviceUid = requestData.DeviceUid
-        };
-
-        context.RefreshTokens.Add(refreshToken);
-        await context.SaveChangesAsync();
-
-        var response = new { AccessToken = jwt };
-
-        Response.Cookies.Append("RefreshToken", refreshToken.Id.ToString(),
-            new CookieOptions
-            {
-                HttpOnly = true,
-                // Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.Now.Add(TimeSpan.FromDays(30))
-            });
-
-        return Ok(response);
+        return Ok();
     }
 
-    [HttpPost("/refresh-token")]
+    public static string GetHashPassword(string password) => PasswordHasher.HashPassword(null!, password);
+
+    [HttpPost("/refresh-token"), Authorize]
     public async Task<IActionResult> RefreshToken(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
@@ -109,8 +99,10 @@ public class AccountController : ControllerBase
             return Problem(title: "There is no RefreshToken cookie", statusCode: StatusCodes.Status400BadRequest);
 
         RefreshToken? refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(t => t.Id == token);
+
         if (refreshToken == null || refreshToken.Expires <= DateTime.UtcNow)
             return Problem(title: "Invalid or expired token", statusCode: StatusCodes.Status400BadRequest);
+
         if (refreshToken.DeviceUid != requestData.DeviceUid)
             return Problem(title: "Invalid token", detail: "The token was created on another client",
                 statusCode: StatusCodes.Status400BadRequest);
@@ -142,8 +134,8 @@ public class AccountController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("/logout")]
-    public async Task<IActionResult> Login(
+    [HttpPost("/logout"), Authorize]
+    public async Task<IActionResult> Logout(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
     {
@@ -187,6 +179,7 @@ public class AccountController : ControllerBase
             {
                 new Claim(JwtRegisteredClaimNames.Name, user.Login),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim("IsAdmin", user.IsAdmin.ToString()),
                 //new Claim("roles", user.Role)
             },
             expires: now.Add(TimeSpan.FromHours(2)),
@@ -197,7 +190,7 @@ public class AccountController : ControllerBase
         return encodedJwt;
     }
 
-    [HttpPost("/change-password")]
+    [HttpPost("/change-password"), Authorize]
     public async Task<IActionResult> ChangePassword(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData,
@@ -216,7 +209,8 @@ public class AccountController : ControllerBase
                 statusCode: StatusCodes.Status400BadRequest);
 
         int c = await context.Users
-            .Where(u => u.Id == requestData.UserId).BatchUpdateAsync(u => new User { Password = model.NewPassword! });
+            .Where(u => u.Id == requestData.UserId)
+            .BatchUpdateAsync(u => new User { Password = GetHashPassword(model.NewPassword!) });
 
         return c > 0
             ? StatusCode(StatusCodes.Status204NoContent)

@@ -65,7 +65,7 @@ public class DataController : Controller
         return Ok(workPeriods);
     }
 
-    [HttpPost("samples"), Consumes("text/plain"), AllowAnonymous]
+    [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
     public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,

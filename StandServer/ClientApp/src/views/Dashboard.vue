@@ -134,7 +134,7 @@ async function signalRStart() {
 
 onMounted(async () => {
 	await store.dispatch('loadSampleIds');
-	await store.dispatch('loadStateHistory');
+	// await store.dispatch('loadStateHistory');
 
 	signalRConnection = signalRConnectionRef.value = new signalR.HubConnectionBuilder()
 		.withUrl('/stand-hub')
@@ -224,7 +224,7 @@ onUnmounted(async () => {
 	store.commit("setLastMeasurementsInitialized", false);
 
 	if (signalRStartTimeout) clearTimeout(signalRStartTimeout);
-	if (signalRConnection?.state !== signalR.HubConnectionState.Disconnected)
+	if (signalRConnection && signalRConnection?.state !== signalR.HubConnectionState.Disconnected)
 		signalRConnection.stop();
 
 	for (let toast of document.querySelectorAll('.iziToast'))
