@@ -6,32 +6,35 @@ import LoginView from '../views/Login.vue'
 const DashboardView = () => import(/* webpackChunkName: "dashboard" */ '../views/Dashboard.vue')
 const HomeView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/HomeView.vue')
 const SampleView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/SampleView.vue')
+const UsersView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/UsersView.vue')
 
-const ifNotAuthenticated = (to, from) => {
+const isNotAuthenticated = (to, from) => {
 	console.log(store);
 	if (store.getters.isAuth)
 		return '/';
 }
 
-const ifAuthenticated = (to, from) => {
+const isAuthenticated = (to, from) => {
 	if (!store.getters.isAuth && to.name !== 'Login') {
 		return { name: 'login' }
 	}
 }
+
+const isAdmin = (to, from) => isAuthenticated(to, from) ?? store.getters.isAdmin;
 
 const routes = [
 	{
 		path: '/login',
 		name: 'login',
 		component: LoginView,
-		beforeEnter: ifNotAuthenticated,
+		beforeEnter: isNotAuthenticated,
 		meta: { title: 'Вход' }
 	},
 	{
 		path: '/',
 		name: 'dashboard',
 		component: DashboardView,
-		beforeEnter: ifAuthenticated,
+		beforeEnter: isAuthenticated,
 		children: [
 			{ path: '', name: 'home', component: HomeView, meta: { title: 'Главная' } },
 			{
@@ -39,6 +42,11 @@ const routes = [
 				path: 'samples/:id(\\d+)',
 				component: SampleView,
 				props: route => ({ id: Number(route.params.id) })
+			},
+			{
+				path: 'users', name: 'users',
+				component: UsersView, meta: { title: 'Пользователи' },
+				beforeEnter: isAdmin
 			},
 		]
 	},

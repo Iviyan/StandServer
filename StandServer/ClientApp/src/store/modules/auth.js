@@ -10,6 +10,7 @@ export default {
 	getters: {
 		isAuth: state => !!state.jwt,
 		jwtData: state => state.jwtData,
+		isAdmin: state => state.jwtData?.IsAdmin?.toLowerCase() === 'true',
 	},
 	mutations: {
 		auth(state, value) {

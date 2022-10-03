@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using StandServer.Configuration;
+using StandServer.Services;
+using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 
 namespace StandServer.Controllers;
 
@@ -68,7 +71,7 @@ public class AccountController : ControllerBase
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
     {
-        if (!requestData.IsAdmin)
+        if (requestData.IsAdmin is not true)
             return Problem(title: "You must be an admin to create a user", statusCode: StatusCodes.Status403Forbidden);
 
         if (await context.Users.AnyAsync(x => x.Login == model.Login))
@@ -89,7 +92,7 @@ public class AccountController : ControllerBase
 
     public static string GetHashPassword(string password) => PasswordHasher.HashPassword(null!, password);
 
-    [HttpPost("/refresh-token"), Authorize]
+    [HttpPost("/refresh-token")]
     public async Task<IActionResult> RefreshToken(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
@@ -104,12 +107,12 @@ public class AccountController : ControllerBase
             return Problem(title: "Invalid or expired token", statusCode: StatusCodes.Status400BadRequest);
 
         if (refreshToken.DeviceUid != requestData.DeviceUid)
-            return Problem(title: "Invalid token", detail: "The token was created on another client",
+            return Problem(title: "Invalid token", detail: "The token was created by another client",
                 statusCode: StatusCodes.Status400BadRequest);
 
         User user = await context.Users.FirstAsync(u => u.Id == refreshToken.UserId);
         string jwt = CreateJwtToken(user);
-
+        
         RefreshToken newRefreshToken = new()
         {
             UserId = user.Id,
@@ -158,16 +161,6 @@ public class AccountController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("/i"), Authorize]
-    public IActionResult Info()
-    {
-        return Ok(new
-        {
-            Login = User.FindFirst(JwtRegisteredClaimNames.Email)!.Value,
-            Role = String.Join(", ", User.FindAll(ClaimTypes.Role))
-        });
-    }
-
     string CreateJwtToken(User user)
     {
         var now = DateTime.UtcNow;
@@ -196,6 +189,10 @@ public class AccountController : ControllerBase
         [FromServices] RequestData requestData,
         [FromBody] ChangePasswordRequest model)
     {
+        if (!Request.Cookies.TryGetValue("RefreshToken", out string? sRefreshToken)
+            || !Guid.TryParse(sRefreshToken, out Guid refreshToken))
+            return Problem(title: "There is no RefreshToken cookie", statusCode: StatusCodes.Status400BadRequest);
+
         string? password = await context.Users
             .Where(u => u.Id == requestData.UserId)
             .Select(u => u.Password)
@@ -204,16 +201,159 @@ public class AccountController : ControllerBase
         if (password is null)
             return Problem(title: "User not found", statusCode: StatusCodes.Status404NotFound);
 
-        if (password != model.OldPassword)
+        if (PasswordHasher.VerifyHashedPassword(null!, password, model.NewPassword)
+            != PasswordVerificationResult.Failed)
             return Problem(title: "The old password does not match the current one",
                 statusCode: StatusCodes.Status400BadRequest);
 
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        
         int c = await context.Users
             .Where(u => u.Id == requestData.UserId)
             .BatchUpdateAsync(u => new User { Password = GetHashPassword(model.NewPassword!) });
 
+        await context.RefreshTokens
+            .Where(t => t.UserId == requestData.UserId && t.Id != refreshToken)
+            .BatchDeleteAsync();
+
+        await transaction.CommitAsync();
+
         return c > 0
             ? StatusCode(StatusCodes.Status204NoContent)
             : Problem(title: "Unknown error", statusCode: StatusCodes.Status404NotFound);
+    }
+
+    [HttpGet("/api/users"), Authorize]
+    public async Task<IActionResult> GetUsers(
+        [FromServices] ApplicationContext context,
+        [FromServices] RequestData requestData)
+    {
+        if (requestData.IsAdmin is not true)
+            return Problem(title: "You must be an admin to create a user", statusCode: StatusCodes.Status403Forbidden);
+
+        var users = await context.Users
+            .Include(u => u.TelegramBotUsers)
+            .AsSplitQuery()
+            .Select(u => new
+            {
+                u.Id, u.Login, u.IsAdmin,
+                TelegramBotUsers = u.TelegramBotUsers
+                    .Select(tu => new { tu.TelegramUserId, tu.Username })
+            })
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    [HttpPatch("/api/users/{id:int}"), Authorize]
+    public async Task<IActionResult> EditUser(int id,
+        [FromServices] ApplicationContext context,
+        [FromServices] RequestData requestData,
+        [FromBody] EditUserRequest model)
+    {
+        if (requestData.IsAdmin is not true)
+            return Problem(title: "You must be an admin to edit user", statusCode: StatusCodes.Status403Forbidden);
+
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+            return Problem(title: "User not found", statusCode: StatusCodes.Status404NotFound);
+
+        if (model.IsFieldPresent(nameof(model.NewPassword))) 
+            user.Password = GetHashPassword(model.NewPassword!);
+
+        if (model.IsFieldPresent(nameof(model.IsAdmin)))
+        {
+            if (user.IsAdmin && model.IsAdmin is false)
+            {
+                bool isLastAdmin = await context.Users.AnyAsync(u => u.Id != id && u.IsAdmin == true);
+                if (!isLastAdmin)
+                    return Problem(title: "It is impossible to deprive the rights of a single admin",
+                        statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            user.IsAdmin = model.IsAdmin!.Value;
+        }
+
+        await context.SaveChangesAsync();
+
+        if (model.IsFieldPresent(nameof(model.NewPassword)))
+        {
+            await context.RefreshTokens
+                .Where(t => t.UserId == id)
+                .BatchDeleteAsync();
+        }
+
+        return StatusCode(StatusCodes.Status204NoContent);
+    }
+
+    [HttpDelete("/api/users/{id:int}"), Authorize]
+    public async Task<IActionResult> DeleteUser(int id,
+        [FromServices] ApplicationContext context,
+        [FromServices] ITelegramService telegramService,
+        [FromServices] RequestData requestData)
+    {
+        if (requestData.IsAdmin is not true)
+            return Problem(title: "You must be an admin to delete user", statusCode: StatusCodes.Status403Forbidden);
+
+        if (requestData.UserId == id)
+        {
+            bool isLastAdmin = !await context.Users.AnyAsync(u => u.Id != id && u.IsAdmin == true);
+            if (isLastAdmin)
+                return Problem(title: "It is forbidden to delete a single administrator",
+                    statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var telegramBotUsers = await context.TelegramBotUsers
+            .Where(u => u.UserId == id)
+            .Select(u => u.TelegramUserId).ToListAsync();
+
+        int c = await context.Users.Where(u => u.Id == id).BatchDeleteAsync();
+        
+        if (c <= 0) return Problem(title: "User not found", statusCode: 404);
+        
+        if (!telegramService.IsOk) return StatusCode(204);
+
+        foreach (var telegramBotUsersChunk in telegramBotUsers.Chunk(30 - 1))
+        {
+            foreach (var telegramBotUser in telegramBotUsersChunk)
+            {
+                await telegramService.BotClient!.SendTextMessageAsync(telegramBotUser,
+                    "Был произведён выход из аккаунта ввиду удаления пользователя.");
+            }
+
+            await Task.Delay(1000);
+        }
+
+        return StatusCode(204);
+
+    }
+
+    [HttpDelete("/api/telegram/users/{id:int}"), Authorize]
+    public async Task<IActionResult> LogoutTelegramBotUser(int id,
+        [FromServices] ApplicationContext context,
+        [FromServices] ITelegramService telegramService,
+        [FromServices] RequestData requestData)
+    {
+        if (requestData.IsAdmin is not true)
+            return Problem(title: "You must be an admin to edit user", statusCode: StatusCodes.Status403Forbidden);
+
+        int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).BatchDeleteAsync();
+        
+        if (c <= 0) return Problem(title: "Telegram user not found", statusCode: 404);
+
+        if (!telegramService.IsOk) return StatusCode(204);
+        
+        try
+        {
+            await telegramService.BotClient!.SendTextMessageAsync(id,
+                "Был произведён выход из аккаунта.");
+        }
+        catch (ApiRequestException ex)
+        {
+            logger.LogError(ex, "Error sending notification to telegram user about logout");
+        }
+
+        return StatusCode(204);
+
     }
 }

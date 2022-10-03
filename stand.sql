@@ -5,8 +5,14 @@ CREATE TABLE users
     id serial PRIMARY KEY,
     login varchar(30) UNIQUE NOT NULL,
     password text NOT NULL,
-    is_admin boolean NOT NULL,
-    telegram_user_id bigint NULL
+    is_admin boolean NOT NULL
+);
+
+create table telegram_bot_users
+(
+    telegram_user_id bigint PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES users (id) on delete cascade,
+    username varchar(32) NULL
 );
 
 CREATE TABLE refresh_tokens

@@ -19,7 +19,7 @@ public interface ITelegramService
 
     Task ExecuteIfOk(Func<TelegramBotClient, Task> action)
         => BotClient is { } ? action(BotClient) : Task.CompletedTask;
-    
+
     Task<T?> ExecuteIfOk<T>(Func<TelegramBotClient, Task<T?>> action)
         => BotClient is { } ? action(BotClient) : Task.FromResult(default(T));
 }
@@ -75,7 +75,9 @@ public class TelegramService : BackgroundService, ITelegramService
 
             try
             {
-                _ = await BotClient.GetChatAsync(config.ChannelId, stoppingToken);
+                using CancellationTokenSource timeoutCts = new(TimeSpan.FromSeconds(10));
+                var requestCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeoutCts.Token);
+                _ = await BotClient.GetChatAsync(config.ChannelId, requestCts.Token);
             }
             catch (ApiRequestException e)
                 when (e.ErrorCode is 400 or 401 or 404)
@@ -165,11 +167,13 @@ public class TelegramService : BackgroundService, ITelegramService
         async Task<User?> GetUser()
         {
             if (senderUser.init) return senderUser.user;
-            senderUser = (await context.Users.AsNoTracking().Where(u => u.TelegramUserId == sender.Id)
+            senderUser = (await context.TelegramBotUsers.AsNoTracking()
+                .Where(u => u.TelegramUserId == sender.Id)
+                .Include(u => u.User)
                 .Select(u => new User
                 {
-                    Id = u.Id, Login = u.Login,
-                    IsAdmin = u.IsAdmin, TelegramUserId = u.TelegramUserId
+                    Id = u.User!.Id, Login = u.User!.Login,
+                    IsAdmin = u.User!.IsAdmin
                 })
                 .FirstOrDefaultAsync(cancellationToken), true);
             return senderUser.user;
@@ -213,54 +217,48 @@ public class TelegramService : BackgroundService, ITelegramService
 
             User? currentUser = await GetUser();
 
-            User? user = await context.Users.FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
-            if (user == null)
+            User? authUser = await context.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
+            if (authUser == null)
             {
                 await ReplyByTextMessage("Invalid login");
                 return;
             }
 
             var passwordVerificationResult = AccountController.PasswordHasher.VerifyHashedPassword(null!,
-                user.Password, password);
+                authUser.Password, password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
             {
                 await ReplyByTextMessage("Invalid password");
                 return;
             }
 
-            if (user.TelegramUserId != null)
+            if (currentUser != null)
             {
-                await ReplyByTextMessage(
-                    $"Пользователь {login} уже привязан к telegram аккаунту с id {user.TelegramUserId}.");
-                return;
-            }
-
-            await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken))
-            {
-                if (currentUser != null)
-                {
-                    await context.Users.Where(u => u.Id == currentUser.Id)
-                        .BatchUpdateAsync(u => new User { TelegramUserId = null },
-                            cancellationToken: cancellationToken);
-                }
-
-                await context.Users.Where(u => u.Id == user.Id)
-                    .BatchUpdateAsync(u => new User { TelegramUserId = sender.Id },
+                await context.TelegramBotUsers.Where(u => u.TelegramUserId == sender.Id)
+                    .BatchUpdateAsync(u => new() { UserId = authUser.Id },
                         cancellationToken: cancellationToken);
-
-                await ReplyByTextMessage(
-                    $"Успешная авторизация.\n*{login}* - _{sender.Id}_.");
-
-                await transaction.CommitAsync(cancellationToken);
             }
+            else
+            {
+                context.TelegramBotUsers.Add(new()
+                {
+                    TelegramUserId = sender.Id,
+                    Username = sender.Username,
+                    UserId = authUser.Id
+                });
+                await context.SaveChangesAsync(cancellationToken);
+                context.ChangeTracker.Clear();
+            }
+
+            await BotClient!.SendTextMessageAsync(message.Chat, $"Успешная авторизация\\.\n*{login}* \\- _{sender.Id}_.",
+                ParseMode.MarkdownV2, cancellationToken: cancellationToken);
         }
         else if (command == "/logout")
         {
             if (await CheckAuth() is not User currentUser) return;
 
-            await context.Users.Where(u => u.Id == currentUser.Id)
-                .BatchUpdateAsync(u => new User { TelegramUserId = null },
-                    cancellationToken: cancellationToken);
+            await context.TelegramBotUsers.Where(u => u.TelegramUserId == currentUser.Id)
+                .BatchDeleteAsync(cancellationToken);
         }
         else if (command == "/getlink")
         {
@@ -341,7 +339,7 @@ public class TelegramService : BackgroundService, ITelegramService
 
         (string command, string? arg) = ParseCommand(data);
     }*/
-    
+
     public async Task SendAlarm(Measurement measurement)
     {
         await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,

@@ -47,14 +47,22 @@ configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true)
 // Database configuration
 
 string connection = builder.Configuration.GetConnectionString("PgsqlConnection");
-services.AddDbContextPool<ApplicationContext>(options =>
+/*services.AddDbContextPool<ApplicationContext>(options =>
 {
     options.UseNpgsql(connection);
 #if DEBUG
     options.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
         .EnableSensitiveDataLogging();
 #endif
-}, poolSize: 16);
+}, poolSize: 16);*/ // Error with NpgsqlConnection in ClearOldRefreshTokensService
+services.AddDbContext<ApplicationContext>(options =>
+{
+    options.UseNpgsql(connection);
+#if DEBUG
+    options.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
+        .EnableSensitiveDataLogging();
+#endif
+});
 services.AddSingleton<DatabaseSource>();
 services.AddScoped<DatabaseContext>();
 
@@ -205,9 +213,12 @@ app.Use(async (context, next) =>
 
     if (context.User.Identity?.IsAuthenticated is true)
     {
-        requestData.UserId = int.Parse(context.User.FindFirst(JwtRegisteredClaimNames.Sub)!.Value);
-        requestData.UserLogin = context.User.FindFirst(JwtRegisteredClaimNames.Name)!.Value;
-        requestData.IsAdmin = Boolean.TryParse(context.User.FindFirst("IsAdmin")!.Value, out bool val) && val;
+        if (context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value is { } userId)
+            requestData.UserId = int.Parse(userId);
+        if (context.User.FindFirst(JwtRegisteredClaimNames.Name)?.Value is { } login)
+            requestData.UserLogin = login;
+        if (context.User.FindFirst("IsAdmin")?.Value is { } isAdmin)
+            requestData.IsAdmin = Boolean.TryParse(isAdmin, out bool val) && val;
     }
 
     await next();

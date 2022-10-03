@@ -1,5 +1,6 @@
 <template>
 	<router-view />
+	<Icons />
 </template>
 
 <script setup>
@@ -8,6 +9,7 @@ import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
+import Icons from "@/components/Icons";
 
 const store = useStore();
 const router = useRouter();

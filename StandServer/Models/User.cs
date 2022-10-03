@@ -7,9 +7,9 @@ public class User
     [Column("login")] public string Login { get; set; } = null!;
     [Column("password")] public string Password { get; set; } = null!;
     [Column("is_admin")] public bool IsAdmin { get; set; }
-    [Column("telegram_user_id")] public long? TelegramUserId { get; set; }
-}
 
+    public List<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
+}
 
 public record LoginModel(string? Login, string? Password);
 
@@ -40,5 +40,21 @@ public class ChangePasswordRequestValidator : AbstractValidator<ChangePasswordRe
     {
         RuleFor(user => user.NewPassword).NotNull().Length(1, 30);
         RuleFor(user => user.OldPassword).NotNull();
+    }
+}
+
+public class EditUserRequest : PatchDtoBase
+{
+    private string? newPassword;
+    private bool? isAdmin;
+    public string? NewPassword { get => newPassword; set { newPassword = value; SetHasProperty(); } }
+    public bool? IsAdmin { get => isAdmin; set { isAdmin = value; SetHasProperty(); } }
+}
+
+public class EditUserRequestValidator : AbstractValidator<EditUserRequest>
+{
+    public EditUserRequestValidator()
+    {
+        RuleFor(user => user.NewPassword).Length(1, 30);
     }
 }

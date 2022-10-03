@@ -67,7 +67,7 @@
 							<th class="hide-900">Частота, GHz</th>
 							<th style="overflow-wrap: anywhere;">Состояние</th>
 						</tr>
-						<tr v-for="measurement in new ReverseIterable(measurements)"
+						<tr v-for="measurement in reverseIterate(measurements)"
 							:class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 							<td>{{ secondsToDateTime(measurement.time) }}</td>
 							<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
@@ -98,7 +98,7 @@ import Loader from "@/components/Loader";
 
 import Pass from "@/components/Pass";
 import { objectMap, isSampleOk } from "@/utils/utils";
-import { ReverseIterable } from "@/utils/arrayUtils";
+import { reverseIterate } from "@/utils/arrayUtils";
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, secondsToDateTime } from "@/utils/timeUtils";
 

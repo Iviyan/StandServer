@@ -27,6 +27,11 @@
 						<span class="nav-text">Изменить пароль</span>
 					</a>
 				</li>
+				<li class="dark" v-if="store.getters.isAdmin">
+					<router-link to="/users">
+						<span class="nav-text">Пользователи</span>
+					</router-link>
+				</li>
 			</ul>
 		</div>
 	</nav>
@@ -47,8 +52,7 @@
 					   @click="changePasswordModal.oldPasswordShow = !changePasswordModal.oldPasswordShow">{{
 							changePasswordModal.oldPasswordShow ? 'Hide' : 'Show'
 						}}</a>
-				</p
-				>
+				</p>
 				<p class="fieldset">
 					<input v-model="changePasswordModal.newPassword"
 						   class="full-width has-padding has-border"
@@ -198,7 +202,7 @@ onMounted(async () => {
 			if (r instanceof Promise) await r;
 		}
 	});
-	onNewMeasurementsCallbacks.push(async(measurements) => {
+	onNewMeasurementsCallbacks.push(async (measurements) => {
 		await store.dispatch("newMeasurements", measurements);
 	});
 
@@ -261,7 +265,6 @@ async function tryChangePassword() {
 			changePasswordModal.error = 'Неизвестная ошибка';
 	}
 }
-
 </script>
 
 <style>
