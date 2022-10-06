@@ -42,6 +42,8 @@ public class TelegramService : BackgroundService, ITelegramService
     private readonly IServiceProvider serviceProvider;
     private readonly IServiceScope scope;
 
+    private const string DateTimeFormat = "dd.MM.yyyy HH:mm:ss";
+
     public TelegramBotClient? BotClient { get; private set; }
     public bool IsOk => BotClient is { };
 
@@ -191,6 +193,8 @@ public class TelegramService : BackgroundService, ITelegramService
 
         Task<Message> ReplyByTextMessage(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
             cancellationToken: cancellationToken);
+        Task<Message> ReplyByTextMessageV2(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
+            ParseMode.MarkdownV2 ,cancellationToken: cancellationToken);
 
         if (command == "/start")
         {
@@ -250,15 +254,16 @@ public class TelegramService : BackgroundService, ITelegramService
                 context.ChangeTracker.Clear();
             }
 
-            await BotClient!.SendTextMessageAsync(message.Chat, $"Успешная авторизация\\.\n*{login}* \\- _{sender.Id}_.",
-                ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+            await ReplyByTextMessageV2($"Успешная авторизация\\.\n*{login}* \\- _{sender.Id}_\\.");
         }
         else if (command == "/logout")
         {
             if (await CheckAuth() is not User currentUser) return;
 
-            await context.TelegramBotUsers.Where(u => u.TelegramUserId == currentUser.Id)
+            await context.TelegramBotUsers.Where(u => u.TelegramUserId == sender.Id)
                 .BatchDeleteAsync(cancellationToken);
+            
+            await ReplyByTextMessageV2("*Выход*");
         }
         else if (command == "/getlink")
         {
@@ -291,7 +296,7 @@ public class TelegramService : BackgroundService, ITelegramService
 
             string samplesStateText = measurements.Length == 0
                 ? "Данные отсутствуют"
-                : measurements[0].Time.ToString(CultureInfo.CurrentCulture).Replace(".", @"\.") + "\n"
+                : measurements[0].Time.ToString(DateTimeFormat).Replace(".", @"\.") + "\n"
                 + String.Join('\n', measurements.Select(m =>
                     $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
 
@@ -316,7 +321,7 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         new() { Command = "/start", Description = "Описание бота и список команд" },
         new() { Command = "/login", Description = "Вход в аккаунт" },
-        new() { Command = "/logout", Description = "Отвязать telegram аккаунт от пользователя" },
+        new() { Command = "/logout", Description = "Выход" },
         new() { Command = "/state", Description = "Состояние образцов" },
         new() { Command = "/getlink", Description = "Канал с уведомлениями стенда" },
         new() { Command = "/getuserid", Description = "Получить id пользователя" },
@@ -326,7 +331,7 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         new() { Command = "/start", Description = "Bot description and list of commands" },
         new() { Command = "/login", Description = "Login" },
-        new() { Command = "/logout", Description = "Detach the telegram account from the user" },
+        new() { Command = "/logout", Description = "Logout" },
         new() { Command = "/state", Description = "Get samples state" },
         new() { Command = "/getlink", Description = "Channel with stand notifications" },
         new() { Command = "/getuserid", Description = "Get user id" },
@@ -344,7 +349,7 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
             $"*{measurement.SampleId}* \\(_{measurement.State}_\\) \\~ I: {measurement.I}, t: {measurement.T}\n" +
-            $"{measurement.Time.ToString(CultureInfo.CurrentCulture).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}\n",
+            $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}\n",
             parseMode: ParseMode.MarkdownV2);
     }
 

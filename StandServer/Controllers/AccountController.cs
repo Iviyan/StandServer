@@ -87,7 +87,11 @@ public class AccountController : ControllerBase
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return Ok();
+        return Ok(new
+        {
+            user.Id, user.Login, user.IsAdmin,
+            TelegramBotUsers = Array.Empty<TelegramBotUser>()
+        });
     }
 
     public static string GetHashPassword(string password) => PasswordHasher.HashPassword(null!, password);

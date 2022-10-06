@@ -30,7 +30,7 @@
 			<tr>
 				<th>Логин</th>
 				<th>Возможность редактирования пользователей</th>
-				<th style="overflow-wrap: anywhere;">Id телеграм аккаунта</th>
+				<th style="overflow-wrap: anywhere;">Телеграм аккаунты</th>
 			</tr>
 			<tr v-for="user in users" @click="userModal.user = user" :class="{ 'is-admin': user.is_admin }">
 				<td>{{ user.login }}</td>
@@ -141,11 +141,12 @@ onMounted(async () => {
 
 async function addUser() {
 	try {
-		await call_post('/register', {
+		let createdUser = await call_post('/register', {
 			login: newUser.login,
 			password: newUser.password,
 			is_admin: newUser.isAdmin
 		});
+		users.value.push(createdUser);
 		newUser.error = '';
 	} catch (err) {
 		if (err instanceof RequestError)
