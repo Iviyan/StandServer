@@ -138,9 +138,12 @@ public class DataController : Controller
 
             if (telegramService.IsOk)
             {
-                foreach (var measurement in measurements)
-                    if (measurement is { State: not SampleState.Work, I: >= 100 })
-                        await telegramService.SendAlarm(measurement);
+                var badMeasurements = measurements
+                    .Where(m => m is { State: not SampleState.Work, I: >= 100 })
+                    .ToArray();
+                
+                if (badMeasurements.Any())
+                    await telegramService.SendAlarm(badMeasurements);
             }
 
             await standHub.Clients.All.NewMeasurements(measurements);

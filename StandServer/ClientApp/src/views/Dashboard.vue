@@ -5,14 +5,16 @@
 			<p class="stand-status" :class="{'on': standState === true, 'off' : standState === false}">
 				Питание {{ standState === true ? 'включено' : standState === false ? 'выключено' : '?' }}</p>
 			<ul>
-				<li class="darker-shadow-down pd-b">
-					<router-link to="/dashboard">
+				<li class="darker-shadow-down pd-b" :class="{active: router.currentRoute.value.name === 'home'}">
+					<router-link :to="{ name: 'home' }">
 						<span class="nav-text">Главная</span>
 					</router-link>
 				</li>
 
-				<li class="darker" v-for="sampleId in sampleIds">
-					<router-link :to="'/samples/' + sampleIdFormat(sampleId)">
+				<!--suppress EqualityComparisonWithCoercionJS -->
+				<li class="darker" v-for="sampleId in sampleIds"
+					:class="{active: router.currentRoute.value.name === 'sample' && router.currentRoute.value.params.id == sampleId}">
+					<router-link :to="{ name: 'sample', params: { id: sampleIdFormat(sampleId) }}">
 						<span class="nav-text">{{ sampleIdFormat(sampleId) }}</span>
 					</router-link>
 				</li>
@@ -27,8 +29,8 @@
 						<span class="nav-text">Изменить пароль</span>
 					</a>
 				</li>
-				<li class="dark" v-if="store.getters.isAdmin">
-					<router-link to="/users">
+				<li class="dark" v-if="store.getters.isAdmin" :class="{active: router.currentRoute.value.name === 'users'}">
+					<router-link :to="{ name: 'users' }">
 						<span class="nav-text">Пользователи</span>
 					</router-link>
 				</li>

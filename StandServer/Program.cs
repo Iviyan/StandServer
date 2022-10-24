@@ -40,7 +40,8 @@ var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
 var configuration = builder.Configuration;
 
-configuration.AddJsonFile("secrets.json", optional: true, reloadOnChange: true)
+configuration
+    .AddJsonFile("secrets.json", optional: true, reloadOnChange: true)
     .AddJsonFile($"secrets.{builder.Environment.EnvironmentName}.json",
         optional: true, reloadOnChange: true);
 

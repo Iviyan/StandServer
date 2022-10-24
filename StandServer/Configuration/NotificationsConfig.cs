@@ -10,5 +10,6 @@ public class NotificationsConfig
 public class TelegramConfig
 {
     public string Token { get; set; } = null!;
+    public string? ApiUrl { get; set; }
     public string ChannelId { get; set; } = null!;
 }

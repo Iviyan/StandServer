@@ -15,7 +15,7 @@ public interface ITelegramService
 {
     bool IsOk => BotClient is { };
     TelegramBotClient? BotClient { get; }
-    Task SendAlarm(Measurement measurement);
+    Task SendAlarm(params Measurement[] measurements);
 
     Task ExecuteIfOk(Func<TelegramBotClient, Task> action)
         => BotClient is { } ? action(BotClient) : Task.CompletedTask;
@@ -68,12 +68,15 @@ public class TelegramService : BackgroundService, ITelegramService
         {
             if (notificationsConfig.Telegram is not { } config || String.IsNullOrWhiteSpace(config.Token))
             {
-                logger.LogError("Telegram configuration is not defined, notifications will not be sent.");
+                logger.LogError("Telegram configuration is not defined, notifications will not be sent");
                 return;
                 //throw new ConfigurationException("Telegram configuration is not defined");
             }
 
-            BotClient = new(config.Token);
+            BotClient = new(new TelegramBotClientOptions(
+                config.Token,
+                String.IsNullOrWhiteSpace(config.ApiUrl) ? null : config.ApiUrl
+            ));
 
             try
             {
@@ -84,7 +87,7 @@ public class TelegramService : BackgroundService, ITelegramService
             catch (ApiRequestException e)
                 when (e.ErrorCode is 400 or 401 or 404)
             {
-                logger.LogError("Telegram token is invalid.");
+                logger.LogError("Telegram token is invalid");
                 throw new ConfigurationException("Telegram token is invalid");
             }
 
@@ -119,7 +122,7 @@ public class TelegramService : BackgroundService, ITelegramService
             _ => exception.ToString()
         };
 
-        logger.LogError(exception, errorMessage);
+        logger.LogError(exception, "Telegram polling error:\n" + errorMessage);
         return Task.CompletedTask;
     }
 
@@ -193,8 +196,9 @@ public class TelegramService : BackgroundService, ITelegramService
 
         Task<Message> ReplyByTextMessage(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
             cancellationToken: cancellationToken);
+
         Task<Message> ReplyByTextMessageV2(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
-            ParseMode.MarkdownV2 ,cancellationToken: cancellationToken);
+            ParseMode.MarkdownV2, cancellationToken: cancellationToken);
 
         if (command == "/start")
         {
@@ -221,7 +225,8 @@ public class TelegramService : BackgroundService, ITelegramService
 
             User? currentUser = await GetUser();
 
-            User? authUser = await context.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
+            User? authUser = await context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
             if (authUser == null)
             {
                 await ReplyByTextMessage("Invalid login");
@@ -262,7 +267,7 @@ public class TelegramService : BackgroundService, ITelegramService
 
             await context.TelegramBotUsers.Where(u => u.TelegramUserId == sender.Id)
                 .BatchDeleteAsync(cancellationToken);
-            
+
             await ReplyByTextMessageV2("*Выход*");
         }
         else if (command == "/getlink")
@@ -313,7 +318,7 @@ public class TelegramService : BackgroundService, ITelegramService
         @"Для работы с ботом необходимо авторизоваться.
 
 /login [username] [password] - авторизация
-/logout - отвязать telegram аккаунт от пользователя
+/logout - выход
 /getlink - канал с уведомлениями стенда
 /state - состояние образцов";
 
@@ -321,8 +326,8 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         new() { Command = "/start", Description = "Описание бота и список команд" },
         new() { Command = "/login", Description = "Вход в аккаунт" },
-        new() { Command = "/logout", Description = "Выход" },
         new() { Command = "/state", Description = "Состояние образцов" },
+        new() { Command = "/logout", Description = "Выход" },
         new() { Command = "/getlink", Description = "Канал с уведомлениями стенда" },
         new() { Command = "/getuserid", Description = "Получить id пользователя" },
     };
@@ -331,8 +336,8 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         new() { Command = "/start", Description = "Bot description and list of commands" },
         new() { Command = "/login", Description = "Login" },
-        new() { Command = "/logout", Description = "Logout" },
         new() { Command = "/state", Description = "Get samples state" },
+        new() { Command = "/logout", Description = "Logout" },
         new() { Command = "/getlink", Description = "Channel with stand notifications" },
         new() { Command = "/getuserid", Description = "Get user id" },
     };
@@ -345,11 +350,14 @@ public class TelegramService : BackgroundService, ITelegramService
         (string command, string? arg) = ParseCommand(data);
     }*/
 
-    public async Task SendAlarm(Measurement measurement)
+    public async Task SendAlarm(params Measurement[] measurements)
     {
-        await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
+        string GetAlarmMsg(Measurement measurement) =>
             $"*{measurement.SampleId}* \\(_{measurement.State}_\\) \\~ I: {measurement.I}, t: {measurement.T}\n" +
-            $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}\n",
+            $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}";
+
+        await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
+            String.Join('\n', measurements.Select(GetAlarmMsg)),
             parseMode: ParseMode.MarkdownV2);
     }
 

@@ -5,9 +5,9 @@
 
 		<div class="summary">
 			<div class="header">
-				<div style="flex: 1;" />
+				<p style="display: flex; align-items: center;"><span v-if="!isSamplesOk" style="color: red">есть проблемы</span></p>
 				<h4>Образцы</h4>
-				<p class="">(Обновлено: {{ lastMeasurementTime ? secondsToDateTime(lastMeasurementTime) : '-' }})</p>
+				<p style="text-align: right">(Обновлено: {{ lastMeasurementTime ? secondsToDateTime(lastMeasurementTime) : '-' }})</p>
 			</div>
 
 			<div class="sample-info mt-8" v-for="(measurement, sampleId) in lastSampleMeasurements"
@@ -112,6 +112,11 @@ const sampleIds = computed(() => store.state.dashboard.sampleIds);
 const lastMeasurements = computed(() => store.state.dashboard.lastMeasurements);
 const lastSampleMeasurements = computed(() => objectMap(store.state.dashboard.lastMeasurements, v => v.at(-1)));
 const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime);
+const isSamplesOk = computed(() => {
+	for (let sample in lastSampleMeasurements.value)
+		if (!isSampleOk(lastSampleMeasurements.value[sample])) return false;
+	return true;
+});
 
 const loaded = computed(() => store.state.dashboard.lastMeasurementsInitialized);
 
@@ -145,7 +150,6 @@ onMounted(async () => {
 }
 .summary > .header > p {
 	margin: 0;
-	text-align: right;
 	flex: 1;
 }
 

@@ -19,7 +19,7 @@ CREATE TABLE refresh_tokens
 (
     id uuid PRIMARY KEY,
     user_id integer NOT NULL REFERENCES users (id) on delete cascade,
-    device_uid uuid,
+    device_uid uuid NOT NULL,
     expires timestamptz NOT NULL
 );
 
