@@ -2,6 +2,10 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StandServer", "StandServer\StandServer.csproj", "{F843E309-7157-4A4B-89A9-EAEE8386DB8F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StandServerTest", "StandServerTest\StandServerTest.csproj", "{B8D2F55B-2A64-44E1-858E-CFA034F888E6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataImport", "DataImport\DataImport.csproj", "{650C3F21-3578-48C5-9DE0-7347674B1F06}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +16,13 @@ Global
 		{F843E309-7157-4A4B-89A9-EAEE8386DB8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F843E309-7157-4A4B-89A9-EAEE8386DB8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F843E309-7157-4A4B-89A9-EAEE8386DB8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D2F55B-2A64-44E1-858E-CFA034F888E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D2F55B-2A64-44E1-858E-CFA034F888E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D2F55B-2A64-44E1-858E-CFA034F888E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D2F55B-2A64-44E1-858E-CFA034F888E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{650C3F21-3578-48C5-9DE0-7347674B1F06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{650C3F21-3578-48C5-9DE0-7347674B1F06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{650C3F21-3578-48C5-9DE0-7347674B1F06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{650C3F21-3578-48C5-9DE0-7347674B1F06}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

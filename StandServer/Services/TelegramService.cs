@@ -32,7 +32,19 @@ public static class MqttServiceExtension
         services.AddHostedService(p => (TelegramService)p.GetRequiredService<ITelegramService>());
         return services;
     }
+    public static IServiceCollection AddTelegramServiceMock(this IServiceCollection services)
+    {
+        services.AddSingleton<ITelegramService, TelegramServiceMock>();
+        return services;
+    }
 }
+
+public class TelegramServiceMock : ITelegramService
+{
+    public TelegramBotClient? BotClient => null;
+    public Task SendAlarm(params Measurement[] measurements) => throw new NotImplementedException();
+}
+
 
 [SuppressMessage("ReSharper", "ConvertTypeCheckPatternToNullCheck")]
 public class TelegramService : BackgroundService, ITelegramService

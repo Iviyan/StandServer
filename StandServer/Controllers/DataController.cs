@@ -5,6 +5,13 @@ namespace StandServer.Controllers;
 [ApiController, Route("/api"), Authorize]
 public class DataController : Controller
 {
+    private readonly ILogger<DataController> logger;
+
+    public DataController(ILogger<DataController> logger)
+    {
+        this.logger = logger;
+    }
+
     [HttpGet("samples")]
     public IActionResult GetSamplesList([FromServices] CachedData data)
     {
@@ -300,7 +307,7 @@ public class DataController : Controller
     Measurement? ParseRawMeasurement(string str)
     {
         if (str.Length < 49) return null;
-
+        
         ReadOnlySpan<char> s = str.AsSpan();
         int nextSeparatorIndex, valueStartIndex;
 

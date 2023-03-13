@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="server" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="server">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$/../../../../Program Files/dotnet/sdk/6.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_6_default.editorconfig" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer.sln" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/CachedData.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/.editorconfig" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/.gitignore" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/README.md" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/dist/css/chunk-vendors.9e464944.css" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/dist/css/dashboard.e10481b0.css" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/dist/favicon.ico" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/dist/index.html" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/jsconfig.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/package-lock.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/package.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/public/favicon.ico" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/public/index.html" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/App.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/assets/logo.png" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/components/Loader.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/components/MdiClose.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/components/MeasurementHistoryChart.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/components/Pass.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/components/TimeAxisChart.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/exceptions.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/main.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/router/index.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/store/index.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/store/modules/auth.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/store/modules/dashboard.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/api.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/arrayUtils.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/decimation.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/fetch.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/stringUtils.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/utils/timeUtils.js" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/views/Dashboard.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/views/Login.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/views/dashboard/HomeView.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/ClientApp/src/views/dashboard/SampleView.vue" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Configuration/JwtConfig.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Configuration/StandInfo.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Controllers/AccountController.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Controllers/DataController.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Database/ApplicationContext.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Database/DatabaseContext.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Database/DatabaseSource.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Hubs/StandHub.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Models/Measurement.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Models/RefreshToken.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Models/StateHistory.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Models/User.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Program.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Properties/launchSettings.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/RequestData.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Services/ClearOldRefreshTokensService.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Services/ConnectionLossDetectionService.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Services/HubTestService.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Services/LoadCacheService.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/StandServer.csproj" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/appsettings.Development.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/appsettings.json" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/obj/Debug/net6.0/StandServer.AssemblyInfo.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/obj/Debug/net6.0/StandServer.GeneratedMSBuildEditorConfig.editorconfig" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/obj/Debug/net6.0/StandServer.GlobalUsings.g.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/DateTimeExtensions.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/DateTimeModelBinder.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/FixedSpa.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/RawRequestBodyStringFormatter.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/SnakeCaseNamingPolicy.cs" web="/" />
+            <mapping local="$PROJECT_DIR$/StandServer/Utils/StringUtils.cs" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>
