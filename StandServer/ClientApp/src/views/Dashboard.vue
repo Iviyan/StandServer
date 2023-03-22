@@ -2,8 +2,10 @@
 	<nav class="main-menu">
 
 		<div class="scrollbar">
-			<p class="stand-status" :class="{'on': standState === true, 'off' : standState === false}">
-				Питание {{ standState === true ? 'включено' : standState === false ? 'выключено' : '?' }}</p>
+			<p class="stand-status">
+				<span v-if="standState.lastMeasurementTime">Последнее измерение: {{millisToDateTime(standState.lastMeasurementTime) }}</span>
+				<span v-else>Измерений нет</span>
+			</p>
 			<ul>
 				<li class="darker-shadow-down pd-b" :class="{active: router.currentRoute.value.name === 'home'}">
 					<router-link :to="{ name: 'home' }">
@@ -90,13 +92,16 @@ import { VueFinalModal } from 'vue-final-modal'
 import MdiClose from '@/components/MdiClose.vue'
 import { call_post } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
+import { millisToDateTime } from "@/utils/timeUtils";
 import { RequestError } from "@/exceptions";
 
 const store = useStore();
 const router = useRouter();
 
 const isDashboardReady = ref(false);
-const standState = ref(null);
+const standState = reactive({
+	lastMeasurementTime: null
+});
 
 const sampleIds = computed(() => store.state.dashboard.sampleIds);
 
@@ -194,7 +199,8 @@ onMounted(async () => {
 		});
 	});
 
-	signalRConnection.on("StateChange", state => standState.value = state);
+	signalRConnection.on("ActiveInfo", (lastMeasurementTime) =>
+		[standState.lastMeasurementTime] = [lastMeasurementTime]);
 
 	signalRConnection.on("Msg", data => console.log(data));
 
@@ -321,6 +327,10 @@ main {
 	border-radius: 8px;
 	text-align: center;
 	padding: 2px;
+}
+
+.stand-status > span {
+	display: block;
 }
 
 .stand-status.on {

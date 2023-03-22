@@ -7,7 +7,8 @@
 			<div class="header">
 				<p style="display: flex; align-items: center;"><span v-if="!isSamplesOk" style="color: red">есть проблемы</span></p>
 				<h4>Образцы</h4>
-				<p style="text-align: right">(Обновлено: {{ lastMeasurementTime ? secondsToDateTime(lastMeasurementTime) : '-' }})</p>
+				<p style="text-align: right">(Обновлено:
+					{{ lastMeasurementTime ? millisToDateTime(lastMeasurementTime) : '-' }})</p>
 			</div>
 
 			<div class="sample-info mt-8" v-for="(measurement, sampleId) in lastSampleMeasurements"
@@ -69,7 +70,7 @@
 						</tr>
 						<tr v-for="measurement in reverseIterate(measurements)"
 							:class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
-							<td>{{ secondsToDateTime(measurement.time) }}</td>
+							<td>{{ millisToDateTime(measurement.time) }}</td>
 							<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
 							<td class="hide-500">{{ measurement.duty_cycle }}</td>
 							<td>{{ measurement.t }}</td>
@@ -100,7 +101,7 @@ import Pass from "@/components/Pass";
 import { objectMap, isSampleOk } from "@/utils/utils";
 import { reverseIterate } from "@/utils/arrayUtils";
 import { sampleIdFormat } from "@/utils/stringUtils";
-import { secondsToInterval, secondsToDateTime } from "@/utils/timeUtils";
+import { secondsToInterval, millisToDateTime } from "@/utils/timeUtils";
 
 /*let {
 	signalRConnection,	onNewMeasurementsCallbacks

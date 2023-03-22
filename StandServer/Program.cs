@@ -153,9 +153,6 @@ services.AddSpaStaticFiles(options => options.RootPath = "ClientApp/dist");
 // A service that removes obsolete refresh tokens
 services.AddHostedService<ClearOldRefreshTokensService>();
 
-// A service that records the moment when receiving data from the stand stops 
-services.AddHostedService<ConnectionLossDetectionService>();
-
 // Notifications configuration
 services.Configure<NotificationsConfig>(configuration.GetSection(NotificationsConfig.SectionName));
 

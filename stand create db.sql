@@ -43,13 +43,6 @@ create table measurements
 create index measurements_sample_id_idx on measurements (sample_id);
 select create_hypertable('measurements', 'time');
 
-create table state_history
-(
-    time timestamptz not null,
-    state boolean not null
-);
-select create_hypertable('state_history', 'time');
-
 CREATE OR REPLACE FUNCTION get_unique_sample_ids() RETURNS table(sample_id int)
 AS $$ BEGIN
     return query

@@ -7,7 +7,7 @@ import { ref, toRaw, onMounted, computed, watch } from 'vue';
 import { Chart, registerables } from 'chart.js';
 import 'chartjs-adapter-luxon';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { secondsToInterval, secondsToDateTime } from '@/utils/timeUtils'
+import { secondsToInterval, millisToDateTime } from '@/utils/timeUtils'
 import { decimation } from '@/utils/decimation'
 
 Chart.register(...registerables);
@@ -136,7 +136,7 @@ onMounted(() => {
 						title: context => context[0].raw[props.yAxis],
 						label: context => [
 							` work time: ${ secondsToInterval(context.raw.seconds_from_start) }`,
-							` datetime: ${ secondsToDateTime(context.raw.time) }`,
+							` datetime: ${ millisToDateTime(context.raw.time) }`,
 							` t: ${ context.raw.t }`,
 							` i: ${ context.raw.i }`,
 							` S: ${ context.raw.duty_cycle }`,

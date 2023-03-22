@@ -21,7 +21,7 @@ public class StandHub : Hub<IStandHubClient>
 
     public override async Task OnConnectedAsync()
     {
-        await Clients.Caller.StateChange(cachedData.State?.State ?? false);
+        await Clients.Caller.ActiveInfo(cachedData.LastMeasurementTime);
         await base.OnConnectedAsync();
     }
 }
@@ -29,6 +29,6 @@ public class StandHub : Hub<IStandHubClient>
 public interface IStandHubClient
 {
     Task Msg(string msg, CancellationToken cancellationToken = default);
-    Task StateChange(bool newState, CancellationToken cancellationToken = default);
+    Task ActiveInfo(DateTime? lastMeasurementTime, CancellationToken cancellationToken = default);
     Task NewMeasurements(IEnumerable<Measurement> measurements, CancellationToken cancellationToken = default);
 }

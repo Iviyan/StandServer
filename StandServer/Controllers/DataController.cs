@@ -18,60 +18,6 @@ public class DataController : Controller
         return Ok(data.SampleIds /*.Select(id => $"{id:D8}")*/);
     }
 
-    [HttpPost("state-history/{newStateRaw:regex(^on$|^off$)}")]
-    public async Task<IActionResult> SetStateOn(string newStateRaw,
-        [FromServices] ApplicationContext context, [FromServices] CachedData data,
-        [FromServices] IHubContext<StandHub, IStandHubClient> standHub)
-    {
-        await data.StateChangeLock.WaitAsync();
-
-        bool newState = newStateRaw.ToLowerInvariant() == "on";
-
-        try
-        {
-            var currentState = data.State;
-
-            if (currentState is { } && currentState.State == newState)
-                return Problem(statusCode: StatusCodes.Status400BadRequest,
-                    title: $"Stand is already {(currentState.State ? "on" : "off")}");
-
-            StateHistory stateRecord = new() { State = newState, Time = DateTime.UtcNow.RoundToSeconds() };
-
-            context.StateHistory.Add(stateRecord);
-            await context.SaveChangesAsync();
-
-            data.State = stateRecord;
-            data.LastActiveTime = DateTime.UtcNow.RoundToSeconds();
-
-            await standHub.Clients.Group(StandHub.MeasurementsGroup).StateChange(newState);
-
-            return Ok();
-        }
-        finally { data.StateChangeLock.Release(); }
-    }
-
-    record WorkPeriod(DateTime From, DateTime? To);
-
-    [HttpGet("state-history")]
-    public IActionResult GetStateHistory(
-        [FromServices] ApplicationContext context)
-    {
-        var stateHistoryRaw = context.StateHistory.AsNoTracking().AsEnumerable();
-
-        List<WorkPeriod> workPeriods = new();
-        using (var iterator = stateHistoryRaw.GetEnumerator())
-        {
-            while (iterator.MoveNext())
-            {
-                var from = iterator.Current;
-                var to = iterator.MoveNext() ? iterator.Current : null;
-                workPeriods.Add(new(from.Time, to?.Time));
-            }
-        }
-
-        return Ok(workPeriods);
-    }
-
     [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
     public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
@@ -79,6 +25,8 @@ public class DataController : Controller
         [FromServices] ITelegramService telegramService,
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
+        data.LastActiveTime = DateTime.UtcNow;
+        
         List<Measurement> measurements = new();
         foreach (string measurementRaw in raw.GetLines(removeEmptyLines: true))
         {
@@ -101,68 +49,32 @@ public class DataController : Controller
             return Ok();
         }
 
+        data.LastMeasurementTime = measurements.MaxBy(m => m.Time)!.Time;
+
         if (!measurements.Select(m => m.SampleId).All(new HashSet<int>().Add)) // check duplicates
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "To add multiple measurements at once for one sample, use the silent parameter");
+        
+        await context.BulkInsertAsync(measurements);
 
-        await data.StateChangeLock.WaitAsync();
-        bool lockReleased = false;
+        foreach (var measurement in measurements)
+            data.SampleIds.Add(measurement.SampleId);
+        
+        await context.SaveChangesAsync();
 
-        try
+        if (telegramService.IsOk)
         {
-            StateHistory? newState = null;
-
-            if (data.State is { State: false } or null)
-            {
-                DateTime now = DateTime.UtcNow;
-                DateTime stateOnTime = now.AddSeconds(-30) > measurements[0].Time
-                    ? now.RoundToSeconds()
-                    : measurements[0].Time;
-
-                if (data.State?.Time is { } lastStateTime && lastStateTime > stateOnTime)
-                    stateOnTime = lastStateTime.AddSeconds(1);
-
-                newState = new() { State = true, Time = stateOnTime };
-                context.StateHistory.Add(newState);
-            }
-            else
-            {
-                data.StateChangeLock.Release();
-                lockReleased = true;
-            }
-
-            await context.BulkInsertAsync(measurements);
-
-            foreach (var measurement in measurements)
-                data.SampleIds.Add(measurement.SampleId);
-
-            if (newState is { })
-            {
-                await context.SaveChangesAsync();
-                data.State = newState;
-                await standHub.Clients.All.StateChange(newState.State);
-            }
-
-            if (telegramService.IsOk)
-            {
-                var badMeasurements = measurements
-                    .Where(m => m is { State: not SampleState.Work, I: >= 100 })
-                    .ToArray();
-                
-                if (badMeasurements.Any())
-                    await telegramService.SendAlarm(badMeasurements);
-            }
-
-            await standHub.Clients.All.NewMeasurements(measurements);
-
-            data.LastActiveTime = DateTime.UtcNow;
-
-            return Ok();
+            var badMeasurements = measurements
+                .Where(m => m is { State: not SampleState.Work, I: >= 100 })
+                .ToArray();
+            
+            if (badMeasurements.Any())
+                await telegramService.SendAlarm(badMeasurements);
         }
-        finally
-        {
-            if (!lockReleased) data.StateChangeLock.Release();
-        }
+
+        await standHub.Clients.All.NewMeasurements(measurements);
+
+        return Ok();
     }
 
     [HttpGet("samples/{id:int}")]

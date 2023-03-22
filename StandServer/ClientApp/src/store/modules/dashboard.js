@@ -4,7 +4,6 @@ import { arraysEqual, difference } from '@/utils/arrayUtils';
 export default {
 	state: {
 		sampleIds: [],
-		stateHistory: [],
 		lastMeasurements: {},
 		homeViewVisited: false,
 		lastMeasurementsInitialized: false
@@ -26,7 +25,6 @@ export default {
 			let index = state.sampleIds.indexOf(value);
 			if (index >= 0) state.sampleIds.splice(index, 1);
 		},
-		setStateHistory(state, value) { state.stateHistory = value; },
 		setLastMeasurements(state, value) { state.lastMeasurements = value; },
 		newMeasurements(state, measurements) {
 			for (let { sample_id: sampleId, ...measurement } of measurements) {
@@ -44,11 +42,6 @@ export default {
 			let sampleIds = await call_get('/api/samples');
 			commit('setSampleIds', sampleIds);
 			console.log("sample ids: ", state.sampleIds);
-		},
-		async loadStateHistory({ commit, state }) {
-			let stateHistory = await call_get('/api/state-history');
-			commit('setStateHistory', stateHistory);
-			console.log("state history: ", state.stateHistory);
 		},
 		async loadLastMeasurements({ commit, state }) {
 			let lastMeasurements = await call_get('/api/samples/last', { count: 20, sample_ids: 'active' });

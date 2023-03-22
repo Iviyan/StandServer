@@ -8,7 +8,6 @@ public class ApplicationContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
-    public DbSet<StateHistory> StateHistory { get; set; } = null!;
     
     static ApplicationContext()
         => NpgsqlConnection.GlobalTypeMapper.MapEnum<SampleState>();

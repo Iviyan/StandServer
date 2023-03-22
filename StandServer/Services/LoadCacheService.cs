@@ -27,34 +27,11 @@ public class LoadCacheService : BackgroundService
 
         logger.LogInformation($"> Sample ids loaded");
 
-        cachedData.State = await efContext.StateHistory.AsNoTracking()
+        cachedData.LastMeasurementTime = await efContext.Measurements.AsNoTracking()
             .OrderByDescending(e => e.Time)
-            .Take(1).SingleOrDefaultAsync(stoppingToken);
-
-        if (cachedData.State is { State: true })
-        {
-            logger.LogWarning("The last state of the stand is enabled, i.e. the server has shut down incorrectly.");
-            
-            var lastMeasurement = await efContext.Measurements.AsNoTracking()
-                .Where(m => m.Time >= cachedData.State.Time)
-                .OrderByDescending(m => m.Time)
-                .FirstOrDefaultAsync(stoppingToken);
-
-            StateHistory state = new()
-            {
-                State = false,
-                Time = lastMeasurement is { }
-                    ? lastMeasurement.Time.RoundToSeconds().AddSeconds(1)
-                    : cachedData.State.Time.RoundToSeconds().AddSeconds(1)
-            };
-            efContext.StateHistory.Add(state);
-            await efContext.SaveChangesAsync(stoppingToken);
-            cachedData.State = state;  
-            
-            logger.LogInformation($"A record of the state of the stand has been created based on the last" +
-                                  $" {(lastMeasurement is { } ? "measurement" : "state")}");
-        }
-        logger.LogInformation($"> Last state loaded");
+            .Take(1).Select(m => m.Time).SingleOrDefaultAsync(stoppingToken);
+        
+        logger.LogInformation($"> Last measurement time loaded");
 
         logger.LogInformation($"Load cache end...");
     }

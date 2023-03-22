@@ -47,31 +47,19 @@ select create_hypertable('measurements', 'time');
 insert into measurements values (1, '01.01.2022 12:05', 60, 20, 45, 50, 7167, 1000, 50, 10, 10000, true);
 select * from measurements order by time;
 delete from measurements where sample_id = 90522;
-select * from state_history;
 
 SELECT m.sample_id, m.time, m.seconds_from_start, m.duty_cycle, m.t, m.tu, m.i, m.period, m.work, m.relax, m.frequency, m.state
 	FROM measurements AS m
 	WHERE ((m.sample_id = 90522) AND (m.time >= '01.01.2022')) AND (m.time <= '01.01.2023')
-*/
 
-create table state_history
-(
-    time timestamptz not null,
-    state boolean not null
-);
-select create_hypertable('state_history', 'time');
-
-/*
-delete from state_history;
-insert into state_history values ('09.06.2022 19:18:00', true), ('22.06.2022 09:36:00',false);
 
 insert into users(login, password) values('admin', 'admin');
 
 select * from measurements where sample_id = 1 and time > '01.01.2022';
 
 select distinct sample_id from measurements;
-*/
-/* WITH RECURSIVE t AS (
+
+WITH RECURSIVE t AS (
 	(SELECT sample_id FROM measurements ORDER BY sample_id LIMIT 1)
 	UNION ALL
 	SELECT (SELECT sample_id FROM measurements WHERE sample_id > t.sample_id ORDER BY sample_id LIMIT 1)

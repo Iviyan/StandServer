@@ -4,42 +4,13 @@
 
 		<div class="measurements-control-elements">
 			<input ref="datepickerEl" />
-			<!--<button class="select-period-btn" @click="showSelectPeriodModal = true">Выбрать из истории</button>-->
 			<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
 			<button class="load-csv-btn" @click="loadCsv">Скачать (csv)</button>
 			<button class="del-sample-btn" @click="showRemoveSampleModal = true">Удалить образец</button>
 		</div>
 
-<!--		<vue-final-modal v-model="showSelectPeriodModal" classes="modal-container" content-class="modal-content">
-			<button class="modal-close" @click="showSelectPeriodModal = false">
-				<mdi-close />
-			</button>
-			<span class="modal-title">История работы</span>
-			<div class="modal__content">
-				<div class="state-history-records">
-					<Pass v-for="record in stateHistory"
-						  :from="secondsToDateTime(record.from).split(' ')"
-						  :to="record.to ? secondsToDateTime(record.to).split(' ') : null"
-						  v-slot="{ from, to }">
-						<Pass
-							:fromDate="from[0]" :fromTime="from[1]"
-							:toDate="to?.[0]" :toTime="to?.[1]"
-							v-slot="{ fromDate, fromTime, toDate, toTime }">
-							<p @click="selectPeriod(record)">
-								<span>{{ fromDate }}</span> <span class="time">{{ fromTime }}</span> -
-								<template v-if="to">
-									<span>{{ toDate }}</span> <span class="time">{{ toTime }}</span>
-								</template>
-								<span v-else> * </span>
-							</p>
-						</Pass>
-					</Pass>
-				</div>
-			</div>
-		</vue-final-modal>-->
-
 		<vue-final-modal v-model="showRemoveSampleModal" classes="modal-container" content-class="modal-content">
-			<button class="modal-close" @click="showSelectPeriodModal = false">
+			<button class="modal-close" @click="showRemoveSampleModal = false">
 				<mdi-close />
 			</button>
 			<span class="modal-title">Удаление образца</span>
@@ -56,12 +27,10 @@
 
 		<div class="sample-history-graphs mt-8">
 			<div>
-				<measurements-chart-2 :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t"
-									:show-off-state-records="showOffStateRecords" />
+				<measurements-chart-2 :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t" />
 			</div>
 			<div>
-				<measurements-chart-2 :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i"
-									:show-off-state-records="showOffStateRecords" />
+				<measurements-chart-2 :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i" />
 			</div>
 		</div>
 
@@ -92,8 +61,8 @@
 					<th style="overflow-wrap: anywhere;">Состояние</th>
 				</tr>
 				<tr v-for="measurement in data" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
-					<template v-if="measurement.state !== 'off' || showOffStateRecords">
-						<td>{{ secondsToDateTime(measurement.time) }}</td>
+					<template v-if="measurement.state !== 'off' || showOffStateRecords || !isSampleOk(measurement)">
+						<td>{{ millisToDateTime(measurement.time) }}</td>
 						<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
 						<td>{{ measurement.duty_cycle }}</td>
 						<td>{{ measurement.t }}</td>
@@ -129,7 +98,7 @@ import MeasurementsChart2 from '@/components/MeasurementsChart'
 import Pass from "@/components/Pass";
 import { call_get, call_delete, downloadFile } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
-import { secondsToInterval, secondsToDateTime, floorToDay } from "@/utils/timeUtils";
+import { secondsToInterval, millisToDateTime, floorToDay } from "@/utils/timeUtils";
 import { sleep, isSampleOk } from "@/utils/utils";
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
@@ -139,13 +108,6 @@ const router = useRouter();
 
 const props = defineProps({
 	id: Number
-});
-
-const stateHistory = computed(() => {
-	if (!samplePeriod.value) return store.state.dashboard.stateHistory;
-	let from = floorToDay(new Date(samplePeriod.value.from)).getTime();
-	let to = floorToDay(new Date(samplePeriod.value.to)).addDays(1).getTime();
-	return store.state.dashboard.stateHistory.filter(r => r.from > from && r.to < to);
 });
 
 const data = shallowRef([]);
@@ -167,15 +129,6 @@ function setPeriod({ from, to }) {
 
 const datepickerEl = ref(null);
 let datepicker = null;
-
-// Period selecting via state history modal
-
-const showSelectPeriodModal = ref(false);
-
-function selectPeriod(record) {
-	setPeriod({ from: record.from, to: record.to });
-	showSelectPeriodModal.value = false;
-}
 
 // load data
 
@@ -372,22 +325,6 @@ watch(() => props.id, async id => {
 		grid-template-columns: repeat(2, 1fr);
 		column-gap: 12px;
 	}
-}
-
-/* state history modal */
-
-.state-history-records > p {
-	margin: 0 0 6px 0;
-	padding: 4px 10px;
-	cursor: pointer;
-}
-
-.state-history-records > p:hover {
-	background-color: rgba(0, 0, 0, .1);
-}
-
-.state-history-records > p > .time {
-	color: #888;
 }
 
 </style>

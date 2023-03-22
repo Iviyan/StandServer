@@ -107,7 +107,7 @@ public class AccountController : ControllerBase
 
         RefreshToken? refreshToken = await context.RefreshTokens.FirstOrDefaultAsync(t => t.Id == token);
 
-        if (refreshToken == null || refreshToken.Expires <= DateTime.UtcNow)
+        if (refreshToken == null || refreshToken.Expires <= DateTime.UtcNow) // Expired tokens are automatically deleted
             return Problem(title: "Invalid or expired token", statusCode: StatusCodes.Status400BadRequest);
 
         if (refreshToken.DeviceUid != requestData.DeviceUid)
