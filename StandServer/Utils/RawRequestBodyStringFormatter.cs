@@ -15,6 +15,8 @@ public class RawRequestBodyFormatter : InputFormatter
     {
         if (context == null) throw new ArgumentNullException(nameof(context));
 
+        if (context.HttpContext.Request.ContentType == null) return true;
+        
         if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var contentType)) return false;
 
         if (contentType.MediaType == MediaTypeNames.Text.Plain 
@@ -23,16 +25,30 @@ public class RawRequestBodyFormatter : InputFormatter
 
         return false;
     }
+    
+    public override Task<InputFormatterResult> ReadAsync(InputFormatterContext context)
+    {
+        if (context == null) throw new ArgumentNullException(nameof(context));
+
+        var request = context.HttpContext.Request;
+        if (request.ContentLength == 0)
+            return InputFormatterResult.SuccessAsync(
+                context.ModelType == typeof(byte[]) ? Array.Empty<byte>() : String.Empty);
+
+        return ReadRequestBodyAsync(context);
+    }
 
 
     public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context)
     {
         var request = context.HttpContext.Request;
+        MediaTypeHeaderValue? contentType = null;
         
-        if (!MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out var contentType))
+        if (context.HttpContext.Request.ContentType != null && 
+            !MediaTypeHeaderValue.TryParse(context.HttpContext.Request.ContentType, out contentType))
             return await InputFormatterResult.FailureAsync();
 
-        if (contentType.MediaType == MediaTypeNames.Text.Plain )
+        if (contentType == null || contentType.MediaType == MediaTypeNames.Text.Plain)
         {
             using var reader = new StreamReader(request.Body);
             var content = await reader.ReadToEndAsync();

@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
-CREATE TABLE users
+create table users
 (
     id serial PRIMARY KEY,
     login varchar(30) UNIQUE NOT NULL,
@@ -15,7 +15,7 @@ create table telegram_bot_users
     username varchar(32) NULL
 );
 
-CREATE TABLE refresh_tokens
+create table refresh_tokens
 (
     id uuid PRIMARY KEY,
     user_id integer NOT NULL REFERENCES users (id) on delete cascade,
@@ -23,7 +23,18 @@ CREATE TABLE refresh_tokens
     expires timestamptz NOT NULL
 );
 
-CREATE TYPE sample_state AS ENUM ('off', 'work', 'relax');
+create index refresh_tokens_device_uid_index on refresh_tokens(device_uid);
+
+/*
+select * from refresh_tokens;
+delete from refresh_tokens;
+
+insert into refresh_tokens(id, user_id, device_uid, expires)
+SELECT gen_random_uuid(), 1, gen_random_uuid(), now() + '2 day'
+FROM generate_series(1, 100000) AS t(i);
+*/
+
+create type sample_state AS ENUM ('off', 'work', 'relax');
 
 create table measurements
 (

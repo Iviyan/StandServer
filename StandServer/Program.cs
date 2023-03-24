@@ -107,12 +107,12 @@ services.AddControllers(options =>
         fv.RegisterValidatorsFromAssemblyContaining<Program>(lifetime: ServiceLifetime.Singleton);
     });
 
-// JWT configuration
+// Auth configuration
 
-services.Configure<JwtConfig>(configuration.GetSection(JwtConfig.SectionName));
-services.Configure<StandInfoConfig>(configuration.GetSection(StandInfoConfig.SectionName));
+services.Configure<AuthConfig>(configuration.GetSection(AuthConfig.SectionName));
 
-var jwtConfig = configuration.GetSection(JwtConfig.SectionName).Get<JwtConfig>();
+var authConfig = configuration.GetSection(AuthConfig.SectionName).Get<AuthConfig>();
+var jwtConfig = authConfig.Jwt;
 
 var tokenValidationParams = new TokenValidationParameters
 {
@@ -169,11 +169,12 @@ using (var scope = app.Services.CreateScope())
     var efContext = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
     if (!await efContext.Users.AnyAsync())
     {
-        var firstUser = configuration.GetSection(FirstUserConfig.SectionName).Get<FirstUserConfig>();
+        var firstUser = authConfig.FirstUser;
+        
         User user = new()
         {
             Login = firstUser.Login,
-            Password = AccountController.GetHashPassword(firstUser.Password),
+            Password = AuthController.GetHashPassword(firstUser.Password),
             IsAdmin = true
         };
         efContext.Users.Add(user);
@@ -199,15 +200,6 @@ app.UseAuthorization();
 app.Use(async (context, next) =>
 {
     RequestData requestData = context.RequestServices.GetRequiredService<RequestData>();
-    if (!context.Request.Cookies.TryGetValue("DeviceUid", out string? deviceSUid)
-        || !Guid.TryParse(deviceSUid, out Guid deviceUid))
-    {
-        requestData.DeviceUid = Guid.NewGuid();
-        context.Response.Cookies.Append("DeviceUid", requestData.DeviceUid.ToString(),
-            new CookieOptions { HttpOnly = true, Expires = DateTimeOffset.FromUnixTimeSeconds(int.MaxValue) });
-    }
-    else
-        requestData.DeviceUid = deviceUid;
 
     if (context.User.Identity?.IsAuthenticated is true)
     {
@@ -217,6 +209,9 @@ app.Use(async (context, next) =>
             requestData.UserLogin = login;
         if (context.User.FindFirst("IsAdmin")?.Value is { } isAdmin)
             requestData.IsAdmin = Boolean.TryParse(isAdmin, out bool val) && val;
+        if (context.User.FindFirst("DeviceUid")?.Value is { } deviceUidRaw
+            && Guid.TryParseExact(deviceUidRaw, "N", out Guid deviceUid))
+            requestData.DeviceUid = deviceUid;
     }
 
     await next();

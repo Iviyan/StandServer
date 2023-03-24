@@ -43,8 +43,8 @@ export default {
 			ctx.commit('auth', jwt);
 		},
 		async logout({ commit }) {
-			try { await call_post('/logout'); }
-			finally { commit('logout'); }
+			await call_post('/logout');
+			commit('logout');
 		}
 	}
 }

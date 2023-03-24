@@ -245,7 +245,7 @@ public class TelegramService : BackgroundService, ITelegramService
                 return;
             }
 
-            var passwordVerificationResult = AccountController.PasswordHasher.VerifyHashedPassword(null!,
+            var passwordVerificationResult = AuthController.PasswordHasher.VerifyHashedPassword(null!,
                 authUser.Password, password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
             {

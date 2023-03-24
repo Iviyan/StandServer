@@ -23,6 +23,8 @@ CREATE TABLE refresh_tokens
     expires timestamptz NOT NULL
 );
 
+create index refresh_tokens_device_uid_index on refresh_tokens(device_uid);
+
 CREATE TYPE sample_state AS ENUM ('off', 'work', 'relax');
 
 create table measurements

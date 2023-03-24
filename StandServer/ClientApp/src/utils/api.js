@@ -9,22 +9,24 @@ async function refreshToken() {
 		const response = await fetch('/refresh-token', {
 			method: 'POST'
 		});
-		const text = await response.text();
-		if (text.length === 0) {
-			console.error('Refresh token update error.\n', response);
-			store.commit('logout');
-			return;
-		}
-		const json = JSON.parse(text);
 
-		console.log('Refresh token update: ', response, 'json: ', json)
-		if (response.ok) {
-			store.commit('auth', json.access_token);
-			return true;
+		if (!response.ok) {
+			const text = await response.text();
+			if (text.length === 0) {
+				console.error('Refresh token request error.\n', response);
+			} else {
+				const json = JSON.parse(text);
+				console.error('Refresh token update error.\n', response, '\n', json);
+			}
+			store.commit('logout');
+			return false;
 		}
-		console.error('Refresh token update error.\n', json);
-		store.dispatch('logout');
-		return false;
+
+		const json = response.json();
+		store.commit('auth', json.access_token);
+		console.log('Refresh token update: ', json);
+
+		return true;
 	} finally { release(); }
 }
 
@@ -34,7 +36,7 @@ function isEmpty(obj) {
 }
 
 async function get(url = '', data = {}) {
-	console.log('get | ', url, ' | ', data)
+	console.log('get | ', url, ' | ', data, '\n', `Bearer ${store.state.auth.jwt}`)
 	return await fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
 		method: 'GET',
 		headers: {
@@ -132,7 +134,7 @@ function extractFilename(contentDisposition, defaultFilename) {
 	let filenameUtf8 = contentDisposition.find(e=>e[0] === "filename*");
 	if (filenameUtf8) {
 		filenameUtf8 = trim(filenameUtf8[1], '"');
-		return decodeURI(filenameUtf8.startsWith("UTF-8''") ? filenameUtf8.substr(7) : filenameUtf8);
+		return decodeURI(filenameUtf8.startsWith("UTF-8''") ? filenameUtf8.substring(7) : filenameUtf8);
 	}
 	let filename = contentDisposition.find(e=>e[0] === "filename");
 	if (filename) {
@@ -141,7 +143,7 @@ function extractFilename(contentDisposition, defaultFilename) {
 	return defaultFilename;
 }
 
-export async function downloadFile(url, data = {}) {
+export async function downloadFile(url, data = {}, defaultFileName = null) {
 	if (store.getters.jwtData.exp < Date.now() / 1000 && !refreshTokenMutex.isLocked()) {
 		let res = await refreshToken();
 		if (!res) throw new Error('Refresh token update error');
@@ -177,7 +179,7 @@ export async function downloadFile(url, data = {}) {
 	let blob = await response.blob();
 	let objectUrl = window.URL.createObjectURL(blob);
 
-	let filename = extractFilename(response.headers.get('Content-Disposition'), 'Measurements.csv');
+	let filename = extractFilename(response.headers.get('Content-Disposition'), defaultFileName);
 
 	let anchor = document.createElement("a");
 	document.body.appendChild(anchor);
