@@ -148,7 +148,7 @@ onMounted(async () => {
 	// await store.dispatch('loadStateHistory');
 
 	signalRConnection = signalRConnectionRef.value = new signalR.HubConnectionBuilder()
-		.withUrl('/stand-hub')
+		.withUrl('/api/stand-hub')
 		.configureLogging(signalR.LogLevel.Warning)
 		.withAutomaticReconnect([ 0, 2000, 5000 ])
 		.build();

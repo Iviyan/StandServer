@@ -6,7 +6,7 @@ import { trim } from './stringUtils';
 async function refreshToken() {
 	const release = await refreshTokenMutex.acquire();
 	try {
-		const response = await fetch('/refresh-token', {
+		const response = await fetch('/api/refresh-token', {
 			method: 'POST'
 		});
 
@@ -36,7 +36,6 @@ function isEmpty(obj) {
 }
 
 async function get(url = '', data = {}) {
-	console.log('get | ', url, ' | ', data, '\n', `Bearer ${store.state.auth.jwt}`)
 	return await fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
 		method: 'GET',
 		headers: {

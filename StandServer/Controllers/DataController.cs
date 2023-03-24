@@ -2,7 +2,7 @@
 
 namespace StandServer.Controllers;
 
-[ApiController, Route("/api"), Authorize]
+[ApiController, Authorize]
 public class DataController : Controller
 {
     private readonly ILogger<DataController> logger;

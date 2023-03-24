@@ -14,7 +14,6 @@ export default {
 	},
 	mutations: {
 		auth(state, value) {
-			console.log('auth, ', value)
 			state.jwt = value;
 			if (!!value) {
 				state.jwtData = jwt_decode(value);
@@ -32,7 +31,7 @@ export default {
 			ctx.commit('auth', localStorage.getItem('jwt'))
 		},
 		async login(ctx, { login, password }) {
-			let res = await postj('/login', {
+			let res = await postj('/api/login', {
 				login: login,
 				password: password
 			});
@@ -43,7 +42,7 @@ export default {
 			ctx.commit('auth', jwt);
 		},
 		async logout({ commit }) {
-			await call_post('/logout');
+			await call_post('/api/logout');
 			commit('logout');
 		}
 	}

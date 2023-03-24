@@ -141,7 +141,7 @@ onMounted(async () => {
 
 async function addUser() {
 	try {
-		let createdUser = await call_post('/register', {
+		let createdUser = await call_post('/api/users', {
 			login: newUser.login,
 			password: newUser.password,
 			is_admin: newUser.isAdmin
@@ -193,7 +193,7 @@ async function deleteUser() {
 
 async function logoutTelegramBotUser(telegramUserId) {
 	try {
-		await call_delete(`/api/telegram/users/${ telegramUserId }`);
+		await call_delete(`/api/telegram-users/${ telegramUserId }`);
 
 		let telegramUserIndex = userModal.user.telegram_bot_users
 			.findIndex(u => u.telegram_user_id === telegramUserId);

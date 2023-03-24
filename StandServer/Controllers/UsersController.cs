@@ -11,7 +11,7 @@ public class UsersController : ControllerBase
 
     public UsersController(ILogger<UsersController> logger) => this.logger = logger;
     
-    [HttpPost("/register"), Authorize]
+    [HttpPost("users"), Authorize]
     public async Task<IActionResult> Register([FromBody] RegisterModel model,
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
@@ -39,7 +39,7 @@ public class UsersController : ControllerBase
         });
     }
 
-    [HttpGet("/api/users"), Authorize]
+    [HttpGet("users"), Authorize]
     public async Task<IActionResult> GetUsers(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
@@ -61,7 +61,7 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    [HttpPatch("/api/users/{id:int}"), Authorize]
+    [HttpPatch("users/{id:int}"), Authorize]
     public async Task<IActionResult> EditUser(int id,
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData,
@@ -102,7 +102,7 @@ public class UsersController : ControllerBase
         return StatusCode(StatusCodes.Status204NoContent);
     }
 
-    [HttpDelete("/api/users/{id:int}"), Authorize]
+    [HttpDelete("users/{id:int}"), Authorize]
     public async Task<IActionResult> DeleteUser(int id,
         [FromServices] ApplicationContext context,
         [FromServices] ITelegramService telegramService,
@@ -144,7 +144,7 @@ public class UsersController : ControllerBase
 
     }
 
-    [HttpDelete("/api/telegram/users/{id:int}"), Authorize]
+    [HttpDelete("telegram-users/{id:int}"), Authorize]
     public async Task<IActionResult> LogoutTelegramBotUser(int id,
         [FromServices] ApplicationContext context,
         [FromServices] ITelegramService telegramService,

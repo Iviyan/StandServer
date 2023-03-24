@@ -191,6 +191,8 @@ if (app.Environment.IsDevelopment()) { }
 
 app.UseSpaStaticFiles();
 
+app.UsePathBase("/api");
+
 app.UseRouting();
 
 app.UseAuthentication();
@@ -217,7 +219,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.MapHub<StandHub>("/stand-hub");
+app.MapHub<StandHub>("/stand-hub"); // /api/stand-hub
 
 app.MapControllers();
 

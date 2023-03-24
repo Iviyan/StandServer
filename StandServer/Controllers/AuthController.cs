@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
         return true;
     }
 
-    [HttpPost("/login")]
+    [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model,
         [FromServices] ApplicationContext context)
     {
@@ -75,7 +75,7 @@ public class AuthController : ControllerBase
 
     public static string GetHashPassword(string password) => PasswordHasher.HashPassword(null!, password);
 
-    [HttpPost("/refresh-token")]
+    [HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshToken(
         [FromBody] string rawRefreshToken,
         [FromServices] ApplicationContext context)
@@ -138,7 +138,7 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("/logout"), Authorize]
+    [HttpPost("logout"), Authorize]
     public async Task<IActionResult> Logout(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
@@ -174,7 +174,7 @@ public class AuthController : ControllerBase
         return encodedJwt;
     }
 
-    [HttpPost("/change-password"), Authorize]
+    [HttpPost("change-password"), Authorize]
     public async Task<IActionResult> ChangePassword(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData,
