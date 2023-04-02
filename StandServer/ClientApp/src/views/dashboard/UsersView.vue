@@ -47,10 +47,10 @@
 
 	<vue-final-modal v-model="userModal.show" classes="modal-container" content-class="modal-content"
 					 :escToClose="true">
-		<button class="modal-close" @click="userModal.show = false">
-			<mdi-close />
-		</button>
-		<span class="modal-title">Пользователь {{ userModal.user?.login }}</span>
+		<div class="modal-header">
+			<span class="modal-title">Пользователь {{ userModal.user?.login }}</span>
+			<button class="modal-close" @click="userModal.show = false"><mdi-close /></button>
+		</div>
 		<div class="modal__content">
 			<div class="s-form">
 				<p class="fieldset">

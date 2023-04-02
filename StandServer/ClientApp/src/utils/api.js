@@ -22,7 +22,7 @@ async function refreshToken() {
 			return false;
 		}
 
-		const json = response.json();
+		const json = await response.json();
 		store.commit('auth', json.access_token);
 		console.log('Refresh token update: ', json);
 

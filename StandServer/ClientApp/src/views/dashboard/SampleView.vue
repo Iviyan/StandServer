@@ -10,10 +10,10 @@
 		</div>
 
 		<vue-final-modal v-model="showRemoveSampleModal" classes="modal-container" content-class="modal-content">
-			<button class="modal-close" @click="showRemoveSampleModal = false">
-				<mdi-close />
-			</button>
-			<span class="modal-title">Удаление образца</span>
+			<div class="modal-header">
+				<span class="modal-title">Удаление образца</span>
+				<button class="modal-close" @click="showRemoveSampleModal = false"><mdi-close /></button>
+			</div>
 			<div class="modal__action">
 				<button @click="removeSample" :disabled="sampleRemoving">Удалить</button>
 				<button @click="showRemoveSampleModal = false">Отмена</button>

@@ -189,7 +189,29 @@ await loadCacheService.ExecuteTask;
 
 if (app.Environment.IsDevelopment()) { }
 
-app.UseSpaStaticFiles();
+if (System.Diagnostics.Debugger.IsAttached)
+{
+    var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
+
+    spaApp.UseFixedSpa(spaBuilder =>
+    {
+        spaBuilder.Options.SourcePath = "ClientApp";
+
+        spaBuilder.UseVueCli(
+            npmScript: "serve",
+            port: 8080,
+            https: false,
+            runner: ScriptRunnerType.Npm,
+            regex: "Compiled successfully",
+            forceKill: true,
+            wsl: false);
+    });
+
+    app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && context.Request.Method == "GET",
+        applicationBuilder => applicationBuilder.Run(spaApp.Build()));
+}
+
+app.UseSpaStaticFiles(new() { ServeUnknownFileTypes = true });
 
 app.UsePathBase("/api");
 
@@ -222,43 +244,5 @@ app.Use(async (context, next) =>
 app.MapHub<StandHub>("/stand-hub"); // /api/stand-hub
 
 app.MapControllers();
-
-/*app.MapToVueCliProxy(
-    "{*path}",
-    new SpaOptions { SourcePath = "ClientApp" },
-    npmScript: !System.Diagnostics.Debugger.IsAttached ? "serve" : null,
-    //npmScript: "serve",
-    regex: "Compiled successfully",
-    forceKill: true
-);*/
-
-// https://github.com/dotnet/aspnetcore/issues/5223#issuecomment-433394061
-
-var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
-spaApp.Use(next => context =>
-{
-    // Set endpoint to null so the SPA middleware will handle the request.
-    context.SetEndpoint(null);
-    return next(context);
-});
-
-spaApp.UseFixedSpa(spaBuilder =>
-{
-    spaBuilder.Options.SourcePath = "ClientApp";
-
-    if (System.Diagnostics.Debugger.IsAttached)
-    {
-        spaBuilder.UseVueCli(
-            npmScript: "serve",
-            port: 8080,
-            https: false,
-            runner: ScriptRunnerType.Npm,
-            regex: "Compiled successfully",
-            forceKill: true,
-            wsl: false);
-    }
-});
-
-app.MapFallback("{*path}", spaApp.Build()); // default is {*path:nonfile}
 
 app.Run();

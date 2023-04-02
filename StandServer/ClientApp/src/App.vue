@@ -79,19 +79,22 @@ button, input, optgroup, select, textarea {
 	background: #fff;
 }
 
+.modal-header {
+	display: flex;
+	align-items: center;
+}
 .modal-title {
 	margin: 0 32px 0 0;
 	font-size: 1.5rem;
 	font-weight: 600;
-}
-
+	flex-grow: 1;
+ }
 .modal-close {
-	position: absolute;
-	top: 0.5rem;
-	right: 0.5rem;
 	border: none;
 	background-color: transparent;
 	cursor: pointer;
+	padding: 0;
+	line-height: 0;
 }
 
 .modal__content {

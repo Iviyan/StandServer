@@ -41,10 +41,10 @@
 	</nav>
 
 	<vue-final-modal v-model="changePasswordModal.show" classes="modal-container" content-class="modal-content">
-		<button class="modal-close" @click="changePasswordModal.show = false">
-			<mdi-close />
-		</button>
-		<span class="modal-title">Изменение пароля</span>
+		<div class="modal-header">
+			<span class="modal-title">Изменение пароля</span>
+			<button class="modal-close" @click="changePasswordModal.show = false"><mdi-close /></button>
+		</div>
 		<div class="modal__content">
 			<div class="s-form">
 				<p class="fieldset">

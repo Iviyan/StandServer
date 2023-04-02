@@ -50,25 +50,3 @@ public class DateTimeModelBinderProvider : IModelBinderProvider
         return null;
     }
 }
-
-public class LocalDateTimeConverter : TypeConverter
-{
-    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
-    {
-        if (sourceType == typeof(string)) return true;
-
-        return base.CanConvertFrom(context, sourceType);
-    }
-    
-    public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
-    {
-        if (value is string str)
-        {
-            if (long.TryParse(str, out long unix))
-                return DateTime.UnixEpoch.AddSeconds(unix);
-            if (DateTime.TryParse(str, CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime date))
-                return date;
-        }
-        return base.ConvertFrom(context, culture, value);
-    }
-}
