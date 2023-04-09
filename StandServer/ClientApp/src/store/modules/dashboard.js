@@ -50,7 +50,7 @@ export default {
 		},
 		async newMeasurements({ dispatch, commit, state }, measurements) {
 			let newMeasurementsSampleIds = new Int32Array(measurements.map(m => m.sample_id));
-			let oldMeasurementsSampleIds = new Int32Array(Object.keys(measurements));
+			let oldMeasurementsSampleIds = new Int32Array(Object.keys(measurements)); // TODO: check it
 			newMeasurementsSampleIds.sort();
 			oldMeasurementsSampleIds.sort();
 

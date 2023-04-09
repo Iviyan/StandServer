@@ -3,6 +3,7 @@ import store from '../store'
 
 import LoginView from '../views/Login.vue'
 
+// Lazy loading
 const DashboardView = () => import(/* webpackChunkName: "dashboard" */ '../views/Dashboard.vue')
 const HomeView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/HomeView.vue')
 const SampleView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/SampleView.vue')

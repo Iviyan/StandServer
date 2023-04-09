@@ -83,7 +83,7 @@ services.AddSignalR()
 
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 ValidatorOptions.Global.DisplayNameResolver =
-    (type, member, expression) => SnakeCaseNamingPolicy.ToSnakeCase(member.Name);
+    (type, member, expression) => SnakeCaseNamingPolicy.FromPascalToSnakeCase(member.Name);
 
 // Controllers, JSON, FluentValidation configuration
 
@@ -179,6 +179,7 @@ using (var scope = app.Services.CreateScope())
         };
         efContext.Users.Add(user);
         await efContext.SaveChangesAsync();
+
     }
 }
 
@@ -189,14 +190,14 @@ await loadCacheService.ExecuteTask;
 
 if (app.Environment.IsDevelopment()) { }
 
-if (System.Diagnostics.Debugger.IsAttached)
+var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
+
+spaApp.UseFixedSpa(spaBuilder =>
 {
-    var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
+    spaBuilder.Options.SourcePath = "ClientApp";
 
-    spaApp.UseFixedSpa(spaBuilder =>
+    if (System.Diagnostics.Debugger.IsAttached)
     {
-        spaBuilder.Options.SourcePath = "ClientApp";
-
         spaBuilder.UseVueCli(
             npmScript: "serve",
             port: 8080,
@@ -205,13 +206,13 @@ if (System.Diagnostics.Debugger.IsAttached)
             regex: "Compiled successfully",
             forceKill: true,
             wsl: false);
-    });
-
-    app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && context.Request.Method == "GET",
-        applicationBuilder => applicationBuilder.Run(spaApp.Build()));
-}
+    }
+});
 
 app.UseSpaStaticFiles(new() { ServeUnknownFileTypes = true });
+
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && context.Request.Method == "GET",
+    applicationBuilder => applicationBuilder.Run(spaApp.Build()));
 
 app.UsePathBase("/api");
 

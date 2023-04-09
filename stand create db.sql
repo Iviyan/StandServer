@@ -1,3 +1,23 @@
+/* Init db by postgres
+
+create user stand with password 'standserver';
+
+create database stand;
+
+grant all privileges on database stand to stand;
+
+-- \c stand -- Connect to stand database
+   
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stand;
+
+alter default privileges in schema public grant all privileges on tables to stand;
+alter default privileges in schema public grant all privileges on sequences to stand;
+alter default privileges in schema public grant all privileges on functions to stand;
+alter default privileges in schema public grant all privileges on types to stand;
+alter default privileges in schema public grant all privileges on routines to stand;
+
+*/
+
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
 CREATE TABLE users

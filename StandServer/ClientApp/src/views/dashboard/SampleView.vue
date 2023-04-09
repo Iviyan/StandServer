@@ -27,10 +27,10 @@
 
 		<div class="sample-history-graphs mt-8">
 			<div>
-				<measurements-chart-2 :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t" />
+				<measurements-chart :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t" />
 			</div>
 			<div>
-				<measurements-chart-2 :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i" />
+				<measurements-chart :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i" />
 			</div>
 		</div>
 
@@ -92,8 +92,7 @@ import { LockPlugin } from "@easepick/lock-plugin";
 import { VueFinalModal } from 'vue-final-modal'
 import MdiClose from '@/components/MdiClose.vue'
 
-import MeasurementsChart from '@/components/MeasurementHistoryChart.vue'
-import MeasurementsChart2 from '@/components/MeasurementsChart'
+import MeasurementsChart from '@/components/MeasurementsChart'
 
 import Pass from "@/components/Pass";
 import { call_get, call_delete, downloadFile } from '@/utils/api';

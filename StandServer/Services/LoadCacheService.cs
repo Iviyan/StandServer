@@ -29,7 +29,7 @@ public class LoadCacheService : BackgroundService
 
         cachedData.LastMeasurementTime = await efContext.Measurements.AsNoTracking()
             .OrderByDescending(e => e.Time)
-            .Take(1).Select(m => m.Time).SingleOrDefaultAsync(stoppingToken);
+            .Take(1).Select(m => (DateTime?)m.Time).SingleOrDefaultAsync(stoppingToken);
         
         logger.LogInformation($"> Last measurement time loaded");
 

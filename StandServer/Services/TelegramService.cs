@@ -24,7 +24,7 @@ public interface ITelegramService
         => BotClient is { } ? action(BotClient) : Task.FromResult(default(T));
 }
 
-public static class MqttServiceExtension
+public static class TelegramServiceExtension
 {
     public static IServiceCollection AddTelegramService(this IServiceCollection services)
     {
