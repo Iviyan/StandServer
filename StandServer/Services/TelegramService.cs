@@ -214,8 +214,8 @@ public class TelegramService : BackgroundService, ITelegramService
 
         if (command == "/start")
         {
-            await BotClient!.SetMyCommandsAsync(botCommandsEn, cancellationToken: cancellationToken);
-            await BotClient!.SetMyCommandsAsync(botCommandsRu, languageCode: "ru",
+            await BotClient!.SetMyCommandsAsync(BotCommandsEn, cancellationToken: cancellationToken);
+            await BotClient!.SetMyCommandsAsync(BotCommandsRu, languageCode: "ru",
                 cancellationToken: cancellationToken);
 
             await ReplyByTextMessage(StartCommandText);
@@ -334,7 +334,7 @@ public class TelegramService : BackgroundService, ITelegramService
 /getlink - канал с уведомлениями стенда
 /state - состояние образцов";
 
-    private static readonly BotCommand[] botCommandsRu =
+    private static readonly BotCommand[] BotCommandsRu =
     {
         new() { Command = "/start", Description = "Описание бота и список команд" },
         new() { Command = "/login", Description = "Вход в аккаунт" },
@@ -344,7 +344,7 @@ public class TelegramService : BackgroundService, ITelegramService
         new() { Command = "/getuserid", Description = "Получить id пользователя" },
     };
 
-    private static readonly BotCommand[] botCommandsEn =
+    private static readonly BotCommand[] BotCommandsEn =
     {
         new() { Command = "/start", Description = "Bot description and list of commands" },
         new() { Command = "/login", Description = "Login" },

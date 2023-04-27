@@ -218,28 +218,49 @@ public class DataController : Controller
 
     Measurement? ParseRawMeasurement(string str)
     {
-        if (str.Length < 49) return null;
+        //00000123 12:01 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W
+        if (str.Length < 41) return null;
         
         ReadOnlySpan<char> s = str.AsSpan();
-        int nextSeparatorIndex, valueStartIndex;
+        
+        int valueStartIndex = 0, nextSeparatorIndex = -1;
+        bool TryNext(char separator = ' ')
+        {
+            valueStartIndex = nextSeparatorIndex + 1;
+            nextSeparatorIndex = str.IndexOf(separator, valueStartIndex);
+            return nextSeparatorIndex != -1;
+        }
 
-        if (!int.TryParse(s[..8], out int sampleId)) return null;
-        if (!DateTime.TryParseExact(s[9..25], "HH:mm dd.MM.yyyy",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime time)) return null;
+        if (!TryNext()) return null;
+        if (!int.TryParse(s[..nextSeparatorIndex], out int sampleId)) return null;
 
-        nextSeparatorIndex = str.IndexOf('|', 26);
-        var timeFromStartParts = str[26..nextSeparatorIndex].Split(':');
-        if (timeFromStartParts.Length != 2) return null;
-        if (!int.TryParse(timeFromStartParts[0], out int hoursFromStart)) return null;
-        if (!int.TryParse(timeFromStartParts[1], out int minutesFromStart)) return null;
-        int secondsFromStart = (hoursFromStart * 60 + minutesFromStart) * 60;
+        if (!TryNext()) return null;
+        if (!TimeOnly.TryParse(s[valueStartIndex..nextSeparatorIndex],
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly timePart)) return null;
+        if (!TryNext('|')) return null;
+        if (!DateOnly.TryParseExact(s[valueStartIndex..nextSeparatorIndex], "dd.MM.yyyy",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly datePart)) return null;
+        DateTime dateTime = datePart.ToDateTime(timePart);
+
+        nextSeparatorIndex = str.IndexOf('|', valueStartIndex);
+        if (!TryNext('|')) return null;
+        var timeFromStartParts = str[valueStartIndex..nextSeparatorIndex].Split(':');
+
+        int secondsFromStart;
+        if (timeFromStartParts.Length is >= 2 and <= 3)
+        {
+            if (!int.TryParse(timeFromStartParts[0], out int hours)) return null;
+            if (!int.TryParse(timeFromStartParts[1], out int minutes)) return null;
+            int seconds = 0;
+            if (timeFromStartParts.Length == 3 && !int.TryParse(timeFromStartParts[2], out seconds)) return null;
+            secondsFromStart = (hours * 60 + minutes) * 60 + seconds;
+        }
+        else return null;
 
         bool ParseNext(ReadOnlySpan<char> s, out short val)
         {
             val = 0;
-            valueStartIndex = nextSeparatorIndex + 1;
-            nextSeparatorIndex = str.IndexOf('|', valueStartIndex);
-            if (nextSeparatorIndex == -1) return false;
+            if (!TryNext('|')) return false;
             return short.TryParse(s[valueStartIndex..nextSeparatorIndex].Trim(' '), out val);
         }
 
@@ -261,7 +282,7 @@ public class DataController : Controller
         if (stateRaw.SequenceEqual("R")) state = SampleState.Relax;
         if (state is null) return null;
 
-        /*Console.WriteLine($"Number: {number:d8}");
+        /*Console.WriteLine($"Number: {sampleId}");
         Console.WriteLine($"DateTime: {dateTime}");
         Console.WriteLine($"Seconds from start: {secondsFromStart}");
         Console.WriteLine($"DutyCycle (%): {dutyCycle}");
@@ -277,7 +298,7 @@ public class DataController : Controller
         Measurement measurement = new()
         {
             SampleId = sampleId,
-            Time = time.ToUniversalTime(),
+            Time = dateTime.ToUniversalTime(),
             SecondsFromStart = secondsFromStart,
             DutyCycle = dutyCycle,
             T = t,

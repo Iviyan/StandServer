@@ -24,7 +24,7 @@ public class ClearOldRefreshTokensService : BackgroundService
 
         do
         {
-            logger.LogDebug($"Old refresh tokens deleting... ({DateTime.Now:O})");
+            logger.LogDebug("Old refresh tokens deleting... ({Now})", DateTime.Now);
 
             var now = DateTime.UtcNow;
             await context.RefreshTokens

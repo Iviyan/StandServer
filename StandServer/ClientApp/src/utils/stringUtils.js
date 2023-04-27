@@ -11,4 +11,7 @@ export function trim(str, ch) {
     return (start > 0 || end < str.length) ? str.substring(start, end) : str;
 }
 
-export const sampleIdFormat = (id) => String(id).padStart(8, '0');
+export const sampleIdFormat = (id) =>
+	id > 0
+	? String(id).padStart(8, '0')
+	: '-' + String(-id).padStart(8, '0');

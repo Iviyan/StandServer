@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace StandServer.Database;
+﻿namespace StandServer.Database;
 
 public class ApplicationContext : DbContext
 {

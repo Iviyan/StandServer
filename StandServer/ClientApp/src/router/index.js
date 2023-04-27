@@ -40,7 +40,7 @@ const routes = [
 			{ path: '', name: 'home', component: HomeView, meta: { title: 'Главная' } },
 			{
 				name: 'sample',
-				path: 'samples/:id(\\d+)',
+				path: 'samples/:id(-?\\d+)',
 				component: SampleView,
 				props: route => ({ id: Number(route.params.id) })
 			},

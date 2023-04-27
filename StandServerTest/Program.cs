@@ -1,4 +1,4 @@
-﻿#define SERVER
+﻿//#define SERVER
 
 using System.Net.Mime;
 using System.Text;
@@ -9,17 +9,18 @@ const string url = "http://192.168.1.23/api/samples";
 const string url = "http://localhost:5161/api/samples";
 #endif
 
-const int samplesCount = 25;
+const int samplesCount = 4;
+const int interval = 5;
 
 HttpClient client = new();
-PeriodicTimer timer = new(TimeSpan.FromSeconds(60));
+PeriodicTimer timer = new(TimeSpan.FromSeconds(interval));
 CancellationTokenSource cts = new(TimeSpan.FromMinutes(60 * 16));
 CancellationToken ct = cts.Token;
 
-const int minutesFromStart = 0;
+const int secondsFromStart = 0;
 
 Measurement[] samples = Enumerable.Range(1, samplesCount)
-    .Select(i => new Measurement { SampleId = 124000 + i, MinutesFromStart = minutesFromStart - 1})
+    .Select(i => new Measurement { SampleId = 100 + i, SecondsFromStart = secondsFromStart - interval})
     .ToArray();
 
 Console.CancelKeyPress += (_, _) => cts.Cancel();
@@ -31,9 +32,9 @@ try
         foreach (var sample in samples)
         {
             sample.Time = now;
-            sample.MinutesFromStart += 1;
-            int cycleTime = sample.Work + sample.Relax;
-            sample.State = sample.MinutesFromStart % cycleTime <= sample.Work ? SampleState.Work : SampleState.Relax;
+            sample.SecondsFromStart += interval;
+            int cycleTime = sample.Work * 60 + sample.Relax * 60;
+            sample.State = sample.SecondsFromStart % cycleTime <= sample.Work * 60 ? SampleState.Work : SampleState.Relax;
             sample.T = (short)(sample.State == SampleState.Work
                 ? Random.Shared.Next(45, 50)
                 : Random.Shared.Next(20, 35));
@@ -54,6 +55,7 @@ try
 }
 catch (OperationCanceledException) { }
 
+// Ctrl+C
 await Task.Delay(TimeSpan.FromSeconds(2));
 
 {
@@ -79,11 +81,12 @@ await Task.Delay(TimeSpan.FromSeconds(2));
 
 
 static string GetMeasurementString(Measurement m)
-    => $"{m.SampleId:D8} {m.Time:HH:mm dd.MM.yyyy}|{MinutesToInterval(m.MinutesFromStart)}|{m.DutyCycle}|" +
+    => $"{m.SampleId:D8} {m.Time:HH:mm:ss dd.MM.yyyy}|{SecondsToInterval(m.SecondsFromStart)}|{m.DutyCycle}|" +
        $"{m.T}|{m.Tu}|{m.I}|{m.Period}|{m.Work}|{m.Relax}|{m.Frequency}|{m.State.ToString("G")[0]}";
 
-static string MinutesToInterval(int m) => $"{(m / 60 | 0).ToString().PadLeft(2, '0')}" +
-                                          $":{(m % 60 | 0).ToString().PadLeft(2, '0')}";
+static string SecondsToInterval(int s) => $"{(s / 60 / 60).ToString().PadLeft(2, '0')}" +
+                                          $":{(s / 60).ToString().PadLeft(2, '0')}" +
+                                          $":{(s % 60).ToString().PadLeft(2, '0')}";
 
 public enum SampleState { Off, Work, Relax }
 
@@ -91,14 +94,14 @@ public class Measurement
 {
     public int SampleId { get; set; }
     public DateTime Time { get; set; }
-    public int MinutesFromStart { get; set; } = 0;
+    public int SecondsFromStart { get; set; } = 0;
     public short DutyCycle { get; set; } = 10;
     public short T { get; set; }
     public short Tu { get; set; } = 50;
     public short I { get; set; }
     public short Period { get; set; } = 1000;
-    public short Work { get; set; } = 50;
-    public short Relax { get; set; } = 10;
+    public short Work { get; set; } = 5;
+    public short Relax { get; set; } = 1;
     public short Frequency { get; set; } = 10000;
     public SampleState State { get; set; } = SampleState.Work;
 }

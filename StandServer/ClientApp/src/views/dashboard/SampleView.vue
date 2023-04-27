@@ -24,6 +24,10 @@
 			<input type="checkbox" v-model="showOffStateRecords">
 			<span>Показывать измерения в выключенном состоянии</span>
 		</label>
+		<label class="cb" style="display: block;">
+			<input type="checkbox" v-model="reverseRecords">
+			<span>Отображать сначала последние измерения</span>
+		</label>
 
 		<div class="sample-history-graphs mt-8">
 			<div>
@@ -60,7 +64,7 @@
 					<th class="hide-900">Частота, GHz</th>
 					<th style="overflow-wrap: anywhere;">Состояние</th>
 				</tr>
-				<tr v-for="measurement in data" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
+				<tr v-for="measurement in reverseIterate(data, reverseRecords)" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 					<template v-if="measurement.state !== 'off' || showOffStateRecords || !isSampleOk(measurement)">
 						<td>{{ millisToDateTime(measurement.time) }}</td>
 						<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
@@ -101,6 +105,7 @@ import { secondsToInterval, millisToDateTime, floorToDay } from "@/utils/timeUti
 import { sleep, isSampleOk } from "@/utils/utils";
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
+import { reverseIterate } from "@/utils/arrayUtils";
 
 const store = useStore();
 const router = useRouter();
@@ -110,7 +115,11 @@ const props = defineProps({
 });
 
 const data = shallowRef([]);
-const showOffStateRecords = ref(true);
+const showOffStateRecords = ref(localStorage.getItem("showOffStateRecords") ?? true);
+const reverseRecords = ref(localStorage.getItem("reverseRecords") ?? false);
+
+watch(showOffStateRecords, async b => localStorage.setItem("showOffStateRecords", b));
+watch(reverseRecords, async b => localStorage.setItem("reverseRecords", b));
 
 // Period
 
