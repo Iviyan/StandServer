@@ -33,7 +33,7 @@
 import { ref } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-import { RequestError } from '@/exceptions';
+import { errorToText } from "@/utils/utils";
 
 const store = useStore();
 const router = useRouter();
@@ -49,11 +49,7 @@ async function tryLogin() {
 		await router.push("/");
 	}
 	catch (err) {
-		console.log(err);
-		if (err instanceof RequestError)
-			error.value = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else
-			error.value = 'Неизвестная ошибка';
+		error.value = errorToText(err);
 	}
 }
 </script>

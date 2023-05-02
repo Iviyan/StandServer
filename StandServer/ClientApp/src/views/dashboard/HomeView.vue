@@ -1,7 +1,7 @@
 <template>
 	<loader :show="!loaded" />
 
-	<div class="" v-if="loaded">
+	<template v-if="loaded">
 
 		<div class="summary">
 			<div class="header">
@@ -87,7 +87,7 @@
 			</Pass>
 		</div>
 
-	</div>
+	</template>
 </template>
 
 <script setup>
@@ -102,10 +102,6 @@ import { objectMap, isSampleOk } from "@/utils/utils";
 import { reverseIterate } from "@/utils/arrayUtils";
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, millisToDateTime } from "@/utils/timeUtils";
-
-/*let {
-	signalRConnection,	onNewMeasurementsCallbacks
-} = inject('signalr');*/
 
 const store = useStore();
 
@@ -131,8 +127,6 @@ function sampleClick(sampleId) {
 onMounted(async () => {
 	if (store.state.dashboard.homeViewVisited) return;
 	store.commit("setHomeViewVisited", true);
-
-	// onNewMeasurementsCallbacks.push((measurements) => {	});
 });
 
 </script>

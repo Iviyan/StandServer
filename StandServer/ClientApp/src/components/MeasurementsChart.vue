@@ -41,14 +41,13 @@ const dataCount = ref(0),
 
 
 function fetchData(data, x1, x2) {
-	//console.log('dt', data)
 	let start = 0, end;
 	while (start < data.length && data[start][props.xAxis] < x1) start++;
 	end = start;
 	while (end < data.length && data[end][props.xAxis] <= x2) end++;
 	end--;
 	let count = end - start + 1;
-	console.log('data length: ', data.length, ', start: ', start, ', end: ', end);
+	console.info('data length: ', data.length, ', start: ', start, ', end: ', end);
 
 	let dec = decimation({
 		data: data,
@@ -74,7 +73,7 @@ function startFetch({ chart }) {
 	const { min, max } = chart.scales.x;
 	clearTimeout(timer);
 	timer = setTimeout(() => {
-		console.log('Fetched data between ' + min + ' and ' + max);
+		console.info('Fetched data between ' + min + ' and ' + max);
 		chart.data.datasets[0].data = fetchData(data.value, min, max);
 		chart.options.plugins.subtitle.text = getDisplayDataInfo();
 		chart.stop(); // make sure animations are not running
@@ -189,14 +188,13 @@ onMounted(() => {
 		chart.options.scales.y.suggestedMax = props.suggestedMax;
 		chart.options.scales.y.suggestedMin = props.suggestedMin;
 		chart.update();
-		console.log('chart props updated', toRaw(props));
+		console.debug('chart props updated', toRaw(props));
 	}, { immediate: true, deep: true });
 });
 
 
 function setData(rawData) {
 	let source = data.value;
-	//console.log('chart updating by new array', data);
 	if (!source) {
 		chart.data.datasets[0].data = [];
 		chart.stop();
@@ -206,7 +204,7 @@ function setData(rawData) {
 	let max, min = source[0]?.[props.xAxis];
 	max = source.at(-1)?.[props.xAxis];
 
-	console.log('min: ', min, ' max: ', max)
+	console.debug('min: ', min, ' max: ', max)
 
 	if (min)
 		chart.options.scales.x.min = min;
@@ -224,16 +222,11 @@ function setData(rawData) {
 
 	chart.stop();
 	chart.update('none');
-	console.log('chart updated by new array');
+	console.debug('chart updated by new array');
 
-	//chart.resetZoom();
 	chart.zoomScale('x', { min, max }, 'none');
 }
 
 watch(() => props.data, (d) => setData(data.value));
 
 </script>
-
-<style>
-
-</style>

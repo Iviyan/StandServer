@@ -2,6 +2,7 @@ import { RequestError } from '@/exceptions';
 import {Mutex} from 'async-mutex';
 import store from '../store'
 import { trim } from './stringUtils';
+import { isEmpty } from './utils'
 
 async function refreshToken() {
 	const release = await refreshTokenMutex.acquire();
@@ -24,15 +25,10 @@ async function refreshToken() {
 
 		const json = await response.json();
 		store.commit('auth', json.access_token);
-		console.log('Refresh token update: ', json);
+		console.debug('Refresh token update: ', json);
 
 		return true;
 	} finally { release(); }
-}
-
-function isEmpty(obj) {
-	for (let i in obj) return false;
-	return true;
 }
 
 async function get(url = '', data = {}) {

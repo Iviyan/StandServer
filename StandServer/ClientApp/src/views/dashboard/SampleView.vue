@@ -6,19 +6,8 @@
 			<input ref="datepickerEl" />
 			<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
 			<button class="load-csv-btn" @click="loadCsv">Скачать (csv)</button>
-			<button class="del-sample-btn" @click="showRemoveSampleModal = true">Удалить образец</button>
+			<button class="del-sample-btn" @click="deleteSampleVfmModal.open()">Удалить образец</button>
 		</div>
-
-		<vue-final-modal v-model="showRemoveSampleModal" classes="modal-container" content-class="modal-content">
-			<div class="modal-header">
-				<span class="modal-title">Удаление образца</span>
-				<button class="modal-close" @click="showRemoveSampleModal = false"><mdi-close /></button>
-			</div>
-			<div class="modal__action">
-				<button @click="removeSample" :disabled="sampleRemoving">Удалить</button>
-				<button @click="showRemoveSampleModal = false">Отмена</button>
-			</div>
-		</vue-final-modal>
 
 		<label class="cb mt-8" style="display: block;">
 			<input type="checkbox" v-model="showOffStateRecords">
@@ -85,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, shallowRef, onMounted } from 'vue';
+import { ref, watch, shallowRef, onMounted } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router';
 
@@ -93,19 +82,20 @@ import { easepick } from '@easepick/core';
 import { RangePlugin } from '@easepick/range-plugin';
 import { LockPlugin } from "@easepick/lock-plugin";
 
-import { VueFinalModal } from 'vue-final-modal'
-import MdiClose from '@/components/MdiClose.vue'
+import ConfirmModal from "@/components/ConfirmModal.vue";
+import { useModal } from 'vue-final-modal'
 
 import MeasurementsChart from '@/components/MeasurementsChart'
 
 import Pass from "@/components/Pass";
-import { call_get, call_delete, downloadFile } from '@/utils/api';
+import { call_get, call_delete, downloadFile, call_post } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, millisToDateTime, floorToDay } from "@/utils/timeUtils";
-import { sleep, isSampleOk } from "@/utils/utils";
+import { sleep, isSampleOk, errorToText } from "@/utils/utils";
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
 import { reverseIterate } from "@/utils/arrayUtils";
+import ChangePasswordModal from "@/components/ChangePasswordModal.vue";
 
 const store = useStore();
 const router = useRouter();
@@ -148,7 +138,7 @@ async function load() {
 		from: datepicker.getStartDate().getTime(),
 		to: datepicker.getEndDate().getTime() + (24 * 60 * 60 * 1000 - 1)
 	});
-	console.log(data.value);
+	console.debug(data.value);
 	isLoading.value = false;
 }
 
@@ -161,18 +151,30 @@ function loadCsv() {
 
 // Sample remove
 
-const showRemoveSampleModal = ref(false);
-const sampleRemoving = ref(false);
+const deleteSampleVfmModal = useModal({
+	component: ConfirmModal,
+	attrs: {
+		title: 'Удаление образца',
+		actionName: 'Удалить',
+		async onSubmit() {
+			let attrs = deleteSampleVfmModal.options.attrs;
+			try {
+				attrs.inProgress = true;
+				await call_delete(`/api/samples/${ props.id }`);
+				attrs.inProgress = false;
+				attrs.error = '';
+				await deleteSampleVfmModal.close();
 
-async function removeSample() {
-	sampleRemoving.value = true;
-	await call_delete(`/api/samples/${ props.id }`);
-	sampleRemoving.value = false;
-	showRemoveSampleModal.value = false;
-	store.commit("removeSample", props.id);
-	await sleep(300); // без этого будет ошибка - enableBodyScroll unsuccessful - targetElement must be provided when calling enableBodyScroll on IOS devices.
-	await router.push('/')
-}
+				store.commit("removeSample", props.id);
+				await router.push('/');
+			} catch (err) {
+				attrs.inProgress = false;
+				attrs.error = errorToText(err)
+			}
+		},
+		onCancel() { deleteSampleVfmModal.close(); }
+	},
+})
 
 // Datepicker (easepick) initialization
 
@@ -200,7 +202,7 @@ onMounted(async () => {
 })
 
 watch(() => props.id, async id => {
-	console.log('props.id changed', store.state.dashboard.sampleIds, props.id);
+	console.debug('props.id changed', store.state.dashboard.sampleIds, props.id);
 	if (!store.state.dashboard.sampleIds.includes(id)) await router.push('/');
 
 	document.title = "Образец " + sampleIdFormat(id);

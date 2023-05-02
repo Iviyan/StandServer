@@ -19,6 +19,6 @@ const store = createStore({
 });
 
 store.dispatch('initAuth')
-	.then(r => console.log('store init'));
+	.then(r => console.info('store init'));
 
 export default store;

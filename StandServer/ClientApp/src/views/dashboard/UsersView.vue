@@ -11,14 +11,12 @@
 					   autocomplete="new-password"
 					   :type="newUser.passwordShow ? 'text' : 'password'"
 					   placeholder="Пароль">
-				<a class="hide-password"
-				   @click="newUser.passwordShow = !newUser.passwordShow">{{
-						newUser.passwordShow ? 'Hide' : 'Show'
-					}}</a>
+				<a class="hide-password" @click="newUser.passwordShow = !newUser.passwordShow">
+					{{ newUser.passwordShow ? 'Hide' : 'Show' }}</a>
 			</p>
 			<label class="cb" style="align-self: center">
 				<input type="checkbox" v-model="newUser.isAdmin">
-				<span>Возможность редактировать пользоваетелей</span>
+				<span>Администратор</span>
 			</label>
 
 			<input type="submit" value="Создать">
@@ -29,12 +27,12 @@
 		<table class="users-table mt-16">
 			<tr>
 				<th>Логин</th>
-				<th>Возможность редактирования пользователей</th>
+				<th>Администратор</th>
 				<th style="overflow-wrap: anywhere;">Телеграм аккаунты</th>
 			</tr>
-			<tr v-for="user in users" @click="userModal.user = user" :class="{ 'is-admin': user.is_admin }">
+			<tr v-for="user in users" @click="selectUser(user)" :class="{ 'is-admin': user.is_admin }">
 				<td>{{ user.login }}</td>
-				<td>{{ user.is_admin ? "Есть" : "Нет" }}</td>
+				<td>{{ user.is_admin ? "Да" : "Нет" }}</td>
 				<td class="telegram-bot-users-list">
 					<p v-for="telegramBotUser in user.telegram_bot_users">
 						{{ telegramBotUser.telegram_user_id }} (@{{ telegramBotUser.username }})
@@ -44,62 +42,16 @@
 		</table>
 
 	</div>
-
-	<vue-final-modal v-model="userModal.show" classes="modal-container" content-class="modal-content"
-					 :escToClose="true">
-		<div class="modal-header">
-			<span class="modal-title">Пользователь {{ userModal.user?.login }}</span>
-			<button class="modal-close" @click="userModal.show = false"><mdi-close /></button>
-		</div>
-		<div class="modal__content">
-			<div class="s-form">
-				<p class="fieldset">
-					<input v-model="userModal.newPassword"
-						   class="full-width has-padding has-border"
-						   :type="userModal.newPasswordShow ? 'text' : 'password'"
-						   placeholder="Новый пароль">
-					<a class="hide-password"
-					   @click="userModal.newPasswordShow = !userModal.newPasswordShow">{{
-							userModal.newPasswordShow ? 'Hide' : 'Show'
-						}}</a>
-				</p>
-
-				<label class="cb" style="display: block">
-					<input type="checkbox" v-model="userModal.isAdmin">
-					<span>Возможность редактировать пользоваетелей</span>
-				</label>
-			</div>
-
-			<p class="error-message">{{ userModal.error }}</p>
-		</div>
-		<div class="modal__action" style="padding: 0">
-			<button @click="changeUser">Изменить</button>
-			<button @click="deleteUser">Удалить</button>
-			<button @click="userModal.show = false">Отмена</button>
-		</div>
-		<hr style="margin: 16px 0 8px 0">
-		<div class="modal__content telegram-bot-users" style="margin-top: 0">
-			<h6>Телеграм аккаунты</h6>
-			<div v-for="telegramBotUser in userModal.user?.telegram_bot_users">
-				<p>{{ telegramBotUser.telegram_user_id }} (@{{ telegramBotUser.username }})</p>
-				<svg class="icon-18" @click="logoutTelegramBotUser(telegramBotUser.telegram_user_id)">
-					<use href="#icon-x" />
-				</svg>
-			</div>
-		</div>
-	</vue-final-modal>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router';
-
-import { VueFinalModal } from 'vue-final-modal'
-import MdiClose from '@/components/MdiClose.vue'
-
 import { call_get, call_delete, call_post, call_patch } from '@/utils/api';
-import { RequestError } from "@/exceptions";
+import { useModal } from 'vue-final-modal'
+import UserModal from "@/components/UserModal.vue";
+import { errorToText, isEmpty } from "@/utils/utils";
 
 const store = useStore();
 const router = useRouter();
@@ -116,26 +68,11 @@ const newUser = reactive({
 	error: ''
 });
 
-const userModal = reactive({
-	_user: null,
-	get user() { return this._user; },
-	set user(u) {
-		this._user = u;
-		this.isAdmin = !!u?.is_admin;
-	},
-	get show() { return !!this.user; },
-	set show(value) { if (!value) this.user = null; else throw new Error("Set user property to open modal"); },
-	newPassword: '',
-	newPasswordShow: false,
-	resetTelegram: false,
-	isAdmin: false,
-	error: ''
-});
+const selectedUser = ref(null);
 
 onMounted(async () => {
 	isLoading.value = true;
 	users.value = await call_get(`/api/users`);
-	console.log(users.value);
 	isLoading.value = false;
 });
 
@@ -149,45 +86,50 @@ async function addUser() {
 		users.value.push(createdUser);
 		newUser.error = '';
 	} catch (err) {
-		if (err instanceof RequestError)
-			newUser.error = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else
-			newUser.error = 'Неизвестная ошибка';
+			newUser.error = errorToText(err);
 	}
 }
 
-async function changeUser() {
+const userVfmModal = useModal({
+	component: UserModal,
+	attrs: {
+		onEdit: editUser,
+		onDelete: deleteUser,
+		onLogoutTelegramBotUser: logoutTelegramBotUser,
+		onCancel() { userVfmModal.close(); }
+	}
+})
+const userVfmModalAttrs = userVfmModal.options.attrs;
+
+function selectUser(user) {
+	selectedUser.value = user;
+	userVfmModalAttrs.user = user;
+	userVfmModal.open();
+}
+
+async function editUser(patch) {
 	try {
-		let patch = {};
-		if (userModal.newPassword) patch.new_password = userModal.newPassword;
-		if (userModal.isAdmin !== userModal.user.is_admin) patch.is_admin = userModal.isAdmin;
-
-		await call_patch(`/api/users/${ userModal.user.id }`, patch);
-
-		userModal.user.is_admin = userModal.isAdmin;
-		userModal.error = '';
-		userModal.show = false;
+		if (!isEmpty(patch)) {
+			await call_patch(`/api/users/${ selectedUser.value.id }`, patch);
+			if (patch.is_admin) selectedUser.value.is_admin = patch.is_admin;
+		}
+		userVfmModalAttrs.error = '';
+		await userVfmModal.close();
 	} catch (err) {
-		if (err instanceof RequestError)
-			userModal.error = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else
-			userModal.error = 'Неизвестная ошибка';
+		userVfmModalAttrs.error = errorToText(err);
 	}
 }
 
 async function deleteUser() {
 	try {
-		await call_delete(`/api/users/${ userModal.user.id }`);
+		await call_delete(`/api/users/${ selectedUser.value.id }`);
 
-		let index = users.value.findIndex(u => u.id === userModal.user.id);
+		let index = users.value.findIndex(u => u.id === selectedUser.value.id);
 		users.value.splice(index, 1);
-		userModal.error = '';
-		userModal.show = false;
+		userVfmModalAttrs.error = '';
+		await userVfmModal.close();
 	} catch (err) {
-		if (err instanceof RequestError)
-			userModal.error = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else
-			userModal.error = 'Неизвестная ошибка';
+		userVfmModalAttrs.error = errorToText(err);
 	}
 }
 
@@ -195,17 +137,12 @@ async function logoutTelegramBotUser(telegramUserId) {
 	try {
 		await call_delete(`/api/telegram-users/${ telegramUserId }`);
 
-		let telegramUserIndex = userModal.user.telegram_bot_users
+		let telegramUserIndex = selectedUser.value.telegram_bot_users
 			.findIndex(u => u.telegram_user_id === telegramUserId);
-		userModal.user.telegram_bot_users.splice(telegramUserIndex, 1);
-		userModal.error = '';
+		selectedUser.value.telegram_bot_users.splice(telegramUserIndex, 1);
+		userVfmModalAttrs.error = '';
 	} catch (err) {
-		if (err instanceof RequestError)
-			userModal.error = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else {
-			userModal.error = 'Неизвестная ошибка';
-			console.error(err);
-		}
+		userVfmModalAttrs.error = errorToText(err);
 	}
 }
 </script>

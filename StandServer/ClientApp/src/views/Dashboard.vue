@@ -27,7 +27,7 @@
 					</a>
 				</li>
 				<li class="dark">
-					<a href="#" @click="changePasswordModal.show = true">
+					<a href="#" @click="changePasswordVfmModal.open()">
 						<span class="nav-text">Изменить пароль</span>
 					</a>
 				</li>
@@ -40,42 +40,6 @@
 		</div>
 	</nav>
 
-	<vue-final-modal v-model="changePasswordModal.show" classes="modal-container" content-class="modal-content">
-		<div class="modal-header">
-			<span class="modal-title">Изменение пароля</span>
-			<button class="modal-close" @click="changePasswordModal.show = false"><mdi-close /></button>
-		</div>
-		<div class="modal__content">
-			<div class="s-form">
-				<p class="fieldset">
-					<input v-model="changePasswordModal.oldPassword"
-						   class="full-width has-padding has-border"
-						   :type="changePasswordModal.oldPasswordShow ? 'text' : 'password'"
-						   placeholder="Старый пароль">
-					<a class="hide-password"
-					   @click="changePasswordModal.oldPasswordShow = !changePasswordModal.oldPasswordShow">{{
-							changePasswordModal.oldPasswordShow ? 'Hide' : 'Show'
-						}}</a>
-				</p>
-				<p class="fieldset">
-					<input v-model="changePasswordModal.newPassword"
-						   class="full-width has-padding has-border"
-						   :type="changePasswordModal.newPasswordShow ? 'text' : 'password'" placeholder="Новый пароль">
-					<a class="hide-password"
-					   @click="changePasswordModal.newPasswordShow = !changePasswordModal.newPasswordShow">{{
-							changePasswordModal.newPasswordShow ? 'Hide' : 'Show'
-						}}</a>
-				</p>
-
-				<p class="error-message">{{ changePasswordModal.error }}</p>
-			</div>
-		</div>
-		<div class="modal__action">
-			<button @click="tryChangePassword">Изменить</button>
-			<button @click="changePasswordModal.show = false">Отмена</button>
-		</div>
-	</vue-final-modal>
-
 	<main>
 		<router-view v-if="isDashboardReady" />
 	</main>
@@ -85,15 +49,14 @@
 import { onMounted, onUnmounted, computed, ref, provide, shallowRef, watch, reactive } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
-
 import * as signalR from '@microsoft/signalr'
 import iziToast from 'izitoast'
-import { VueFinalModal } from 'vue-final-modal'
-import MdiClose from '@/components/MdiClose.vue'
+import { useModal } from 'vue-final-modal'
+import ChangePasswordModal from "@/components/ChangePasswordModal.vue";
 import { call_post } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { millisToDateTime } from "@/utils/timeUtils";
-import { RequestError } from "@/exceptions";
+import { errorToText } from "@/utils/utils";
 
 const store = useStore();
 const router = useRouter();
@@ -104,7 +67,6 @@ const standState = reactive({
 });
 
 const sampleIds = computed(() => store.state.dashboard.sampleIds);
-
 
 // SignalR
 let signalRConnectionRef = shallowRef(null);
@@ -125,7 +87,7 @@ async function signalRStart() {
 	try {
 		await signalRConnection.start();
 		console.assert(signalRConnection.state === signalR.HubConnectionState.Connected);
-		console.log("SignalR Connected.");
+		console.info("SignalR Connected.");
 
 		let toast = document.querySelector('.iziToast-signalr-connection-failed');
 		if (toast) iziToast.hide({}, toast);
@@ -145,7 +107,6 @@ async function signalRStart() {
 
 onMounted(async () => {
 	await store.dispatch('loadSampleIds');
-	// await store.dispatch('loadStateHistory');
 
 	signalRConnection = signalRConnectionRef.value = new signalR.HubConnectionBuilder()
 		.withUrl('/api/stand-hub')
@@ -155,7 +116,7 @@ onMounted(async () => {
 
 	signalRConnection.onreconnecting(error => {
 		console.assert(signalRConnection.state === signalR.HubConnectionState.Reconnecting);
-		console.log(`Connection lost due to error "${ error }". Reconnecting.`);
+		console.warn(`Connection lost due to error "${ error }". Reconnecting.`);
 		iziToast.error({
 			title: 'Потеря соединения.',
 			message: 'Выполняется попытка переподключения.<br>Ошибка: ' + error,
@@ -183,7 +144,7 @@ onMounted(async () => {
 	});
 	signalRConnection.onclose(error => {
 		console.assert(signalRConnection.state === signalR.HubConnectionState.Disconnected);
-		console.log(`Connection closed due to error "${ error }". Try refreshing this page to restart the connection.`);
+		console.error(`Connection closed due to error "${ error }". Try refreshing this page to restart the connection.`);
 
 		let toast = document.querySelector('.iziToast-signalr-reconnecting');
 		if (toast) iziToast.hide({}, toast);
@@ -249,30 +210,26 @@ async function logout() {
 
 // Change password
 
-const changePasswordModal = reactive({
-	show: false,
-	oldPassword: '',
-	oldPasswordShow: false,
-	newPassword: '',
-	newPasswordShow: false,
-	error: ''
-});
+const changePasswordVfmModal = useModal({
+	component: ChangePasswordModal,
+	attrs: {
+		async onSubmit({oldPassword, newPassword}) {
+			try {
+				await call_post('/change-password', {
+					old_password: oldPassword,
+					new_password: newPassword,
+				});
 
-async function tryChangePassword() {
-	try {
-		await call_post('/change-password', {
-			old_password: changePasswordModal.oldPassword,
-			new_password: changePasswordModal.newPassword,
-		});
-		changePasswordModal.show = false;
-		changePasswordModal.error = changePasswordModal.newPassword = changePasswordModal.oldPassword = ``;
-	} catch (err) {
-		if (err instanceof RequestError)
-			changePasswordModal.error = err.rfc7807 ? err.message : 'Ошибка запроса';
-		else
-			changePasswordModal.error = 'Неизвестная ошибка';
-	}
-}
+				changePasswordVfmModal.options.attrs.error = '';
+				await changePasswordVfmModal.close()
+			} catch (err) {
+				changePasswordVfmModal.options.attrs.error = errorToText(err);
+			}
+		},
+		onCancel() { changePasswordVfmModal.close(); }
+	},
+})
+
 </script>
 
 <style>

@@ -65,7 +65,7 @@ public class DataController : Controller
         if (telegramService.IsOk)
         {
             var badMeasurements = measurements
-                .Where(m => m is { State: not SampleState.Work, I: >= 100 })
+                .Where(m => m is { State: not SampleState.Work, I: >= 200 })
                 .ToArray();
             
             if (badMeasurements.Any())

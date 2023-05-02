@@ -4,11 +4,15 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import store from './store'
 import router from './router'
+import { createVfm } from 'vue-final-modal'
 
-// import "bootstrap/dist/css/bootstrap-grid.min.css"
 import "izitoast/dist/css/iziToast.min.css"
+import 'vue-final-modal/style.css'
+
+const vfm = createVfm()
 
 createApp(App)
 	.use(store)
 	.use(router)
+	.use(vfm)
 	.mount('#app')

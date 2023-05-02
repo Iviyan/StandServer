@@ -188,8 +188,8 @@ public class AuthController : ControllerBase
         if (password is null)
             return Problem(title: "This user seems to have been deleted", statusCode: StatusCodes.Status404NotFound);
 
-        if (PasswordHasher.VerifyHashedPassword(null!, password, model.NewPassword)
-            != PasswordVerificationResult.Failed)
+        var verificationResult = PasswordHasher.VerifyHashedPassword(null!, password, model.OldPassword);
+        if (verificationResult == PasswordVerificationResult.Failed)
             return Problem(title: "The old password does not match the current one",
                 statusCode: StatusCodes.Status400BadRequest);
 

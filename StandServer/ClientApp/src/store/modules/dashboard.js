@@ -41,12 +41,12 @@ export default {
 		async loadSampleIds({ commit, state }) {
 			let sampleIds = await call_get('/api/samples');
 			commit('setSampleIds', sampleIds);
-			console.log("sample ids: ", state.sampleIds);
+			console.debug("sample ids: ", state.sampleIds);
 		},
 		async loadLastMeasurements({ commit, state }) {
 			let lastMeasurements = await call_get('/api/samples/last', { count: 20, sample_ids: 'active' });
 			commit('setLastMeasurements', lastMeasurements);
-			console.log("last measurements: ", state.lastMeasurements);
+			console.debug("last measurements: ", state.lastMeasurements);
 		},
 		async newMeasurements({ dispatch, commit, state }, measurements) {
 			let newMeasurementsSampleIds = new Int32Array(measurements.map(m => m.sample_id));

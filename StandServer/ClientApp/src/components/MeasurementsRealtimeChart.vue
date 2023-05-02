@@ -69,7 +69,6 @@ onMounted(() => {
                         }
                     },
                     ticks: {
-                        //source: 'data',
                         major: {
                             enabled: true
                         },
@@ -143,7 +142,3 @@ watch(() => props.data, (data) => {
     chart.update('none');
 });
 </script>
-
-<style>
-
-</style>

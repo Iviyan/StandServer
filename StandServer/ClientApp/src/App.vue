@@ -1,5 +1,6 @@
 <template>
 	<router-view />
+	<ModalsContainer />
 	<Icons />
 </template>
 
@@ -8,6 +9,7 @@ import { watch, onErrorCaptured } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import iziToast from "izitoast";
+import { ModalsContainer } from 'vue-final-modal'
 import { RequestError } from "@/exceptions";
 import Icons from "@/components/Icons";
 
@@ -67,7 +69,7 @@ button, input, optgroup, select, textarea {
 	align-items: center;
 }
 
-.modal-content {
+.modal-content { /*relative p-4 rounded-lg bg-white dark:bg-gray-900*/
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -79,7 +81,7 @@ button, input, optgroup, select, textarea {
 	background: #fff;
 }
 
-.modal-header {
+.modal--header {
 	display: flex;
 	align-items: center;
 }
@@ -97,12 +99,12 @@ button, input, optgroup, select, textarea {
 	line-height: 0;
 }
 
-.modal__content {
+.modal--content {
 	margin-top: 10px;
 	overflow-y: auto;
 }
 
-.modal__action {
+.modal--action {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -110,7 +112,7 @@ button, input, optgroup, select, textarea {
 	padding: 1rem 0 0;
 }
 
-.modal__action > button {
+.modal--action > button {
 	padding: 0.25rem 0.5rem;
 	border-width: 1px;
 	border-radius: 0.25rem;
@@ -119,11 +121,11 @@ button, input, optgroup, select, textarea {
 	cursor: pointer;
 }
 
-.modal__action > button + button {
+.modal--action > button + button {
 	margin-left: 12px;
 }
 
-.modal__action > button:not(:disabled):hover {
+.modal--action > button:not(:disabled):hover {
 	background-color: rgba(7, 84, 197, 0.1)
 }
 

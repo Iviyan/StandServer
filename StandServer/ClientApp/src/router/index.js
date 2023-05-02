@@ -10,7 +10,7 @@ const SampleView = () => import(/* webpackChunkName: "dashboard" */ '../views/da
 const UsersView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/UsersView.vue')
 
 const isNotAuthenticated = (to, from) => {
-	console.log(store);
+	console.debug(store);
 	if (store.getters.isAuth)
 		return '/';
 }
