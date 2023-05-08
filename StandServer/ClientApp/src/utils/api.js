@@ -24,14 +24,14 @@ async function refreshToken() {
 		}
 
 		const json = await response.json();
-		store.commit('auth', json.access_token);
+		store.commit('auth', json.accessToken);
 		console.debug('Refresh token update: ', json);
 
 		return true;
 	} finally { release(); }
 }
 
-async function get(url = '', data = {}) {
+async function authorizedGet(url = '', data = {}) {
 	return await fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
 		method: 'GET',
 		headers: {
@@ -40,7 +40,7 @@ async function get(url = '', data = {}) {
 	});
 }
 
-async function post(url = '', data = {}) {
+async function authorizedPost(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'POST',
 		headers: {
@@ -51,7 +51,7 @@ async function post(url = '', data = {}) {
 	});
 }
 
-async function delete_(url = '', data = {}) {
+async function authorizedDelete(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'DELETE',
 		headers: {
@@ -62,7 +62,7 @@ async function delete_(url = '', data = {}) {
 	});
 }
 
-async function patch(url = '', data = {}) {
+async function authorizedPatch(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'PATCH',
 		headers: {
@@ -74,10 +74,10 @@ async function patch(url = '', data = {}) {
 }
 
 let methods = {
-	'get': get,
-	'post': post,
-	'delete': delete_,
-	'patch': patch,
+	'get': authorizedGet,
+	'post': authorizedPost,
+	'delete': authorizedDelete,
+	'patch': authorizedPatch,
 }
 
 // To avoid multiple refresh-token calls.
@@ -117,10 +117,10 @@ export async function call(url = '', method = 'GET', data = {}) {
 	return text.length > 0 ? JSON.parse(text) : text;
 }
 
-export async function call_get(url = '', data = {}) { return await call(url, 'get', data); }
-export async function call_post(url = '', data = {}) { return await call(url, 'post', data); }
-export async function call_delete(url = '', data = {}) { return await call(url, 'delete', data); }
-export async function call_patch(url = '', data = {}) { return await call(url, 'patch', data); }
+export async function callGet(url = '', data = {}) { return await call(url, 'get', data); }
+export async function callPost(url = '', data = {}) { return await call(url, 'post', data); }
+export async function callDelete(url = '', data = {}) { return await call(url, 'delete', data); }
+export async function callPatch(url = '', data = {}) { return await call(url, 'patch', data); }
 
 function extractFilename(contentDisposition, defaultFilename) {
 	if (!contentDisposition) return defaultFilename;

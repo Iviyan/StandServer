@@ -74,8 +74,8 @@ Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 services.AddSignalR()
     .AddJsonProtocol(options =>
     {
-        options.PayloadSerializerOptions.PropertyNamingPolicy = SnakeCaseNamingPolicy.Instance;
-        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(SnakeCaseNamingPolicy.Instance));
+        options.PayloadSerializerOptions.PropertyNamingPolicy = CamelCaseNamingPolicy.Instance;
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(CamelCaseNamingPolicy.Instance));
         options.PayloadSerializerOptions.Converters.Add(new DateTimeJsonConverter());
     });
 
@@ -83,19 +83,20 @@ services.AddSignalR()
 
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 ValidatorOptions.Global.DisplayNameResolver =
-    (type, member, expression) => SnakeCaseNamingPolicy.FromPascalToSnakeCase(member.Name);
+    (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
 
 // Controllers, JSON, FluentValidation configuration
 
 services.AddControllers(options =>
     {
         options.ModelBinderProviders.Insert(0, new DateTimeModelBinderProvider());
+        options.ValueProviderFactories.Add(new SnakeCaseQueryValueProviderFactory());
         options.InputFormatters.Insert(0, new RawRequestBodyFormatter());
     })
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.PropertyNamingPolicy = SnakeCaseNamingPolicy.Instance;
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(SnakeCaseNamingPolicy.Instance));
+        options.JsonSerializerOptions.PropertyNamingPolicy = CamelCaseNamingPolicy.Instance;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(CamelCaseNamingPolicy.Instance));
 #if !DEBUG
         options.AllowInputFormatterExceptionMessages = false;
 #endif

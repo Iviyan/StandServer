@@ -47,14 +47,15 @@ public class EditUserRequest : PatchDtoBase
 {
     private string? newPassword;
     private bool? isAdmin;
-    public string? NewPassword { get => newPassword; set { newPassword = value; SetHasProperty(); } }
-    public bool? IsAdmin { get => isAdmin; set { isAdmin = value; SetHasProperty(); } }
+    public string? NewPassword { get => newPassword; set => SetField(ref newPassword, value); }
+    public bool? IsAdmin { get => isAdmin; set => SetField(ref isAdmin, value); }
 }
 
 public class EditUserRequestValidator : AbstractValidator<EditUserRequest>
 {
     public EditUserRequestValidator()
     {
-        RuleFor(user => user.NewPassword).Length(1, 30);
+        RuleFor(user => user.NewPassword).NotNull().Length(1, 30).WhenPropertyChanged();
+        RuleFor(user => user.IsAdmin).NotNull().WhenPropertyChanged();
     }
 }

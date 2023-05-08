@@ -30,12 +30,12 @@
 				<th>Администратор</th>
 				<th style="overflow-wrap: anywhere;">Телеграм аккаунты</th>
 			</tr>
-			<tr v-for="user in users" @click="selectUser(user)" :class="{ 'is-admin': user.is_admin }">
+			<tr v-for="user in users" @click="selectUser(user)" :class="{ 'is-admin': user.isAdmin }">
 				<td>{{ user.login }}</td>
-				<td>{{ user.is_admin ? "Да" : "Нет" }}</td>
+				<td>{{ user.isAdmin ? "Да" : "Нет" }}</td>
 				<td class="telegram-bot-users-list">
-					<p v-for="telegramBotUser in user.telegram_bot_users">
-						{{ telegramBotUser.telegram_user_id }} (@{{ telegramBotUser.username }})
+					<p v-for="telegramBotUser in user.telegramBotUsers">
+						{{ telegramBotUser.telegramUserId }} (@{{ telegramBotUser.username }})
 					</p>
 				</td>
 			</tr>
@@ -48,7 +48,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router';
-import { call_get, call_delete, call_post, call_patch } from '@/utils/api';
+import { callGet, callDelete, callPost, callPatch } from '@/utils/api';
 import { useModal } from 'vue-final-modal'
 import UserModal from "@/components/UserModal.vue";
 import { errorToText, isEmpty } from "@/utils/utils";
@@ -72,16 +72,16 @@ const selectedUser = ref(null);
 
 onMounted(async () => {
 	isLoading.value = true;
-	users.value = await call_get(`/api/users`);
+	users.value = await callGet(`/api/users`);
 	isLoading.value = false;
 });
 
 async function addUser() {
 	try {
-		let createdUser = await call_post('/api/users', {
+		let createdUser = await callPost('/api/users', {
 			login: newUser.login,
 			password: newUser.password,
-			is_admin: newUser.isAdmin
+			isAdmin: newUser.isAdmin
 		});
 		users.value.push(createdUser);
 		newUser.error = '';
@@ -110,8 +110,8 @@ function selectUser(user) {
 async function editUser(patch) {
 	try {
 		if (!isEmpty(patch)) {
-			await call_patch(`/api/users/${ selectedUser.value.id }`, patch);
-			if (patch.is_admin) selectedUser.value.is_admin = patch.is_admin;
+			await callPatch(`/api/users/${ selectedUser.value.id }`, patch);
+			if (patch.isAdmin) selectedUser.value.isAdmin = patch.isAdmin;
 		}
 		userVfmModalAttrs.error = '';
 		await userVfmModal.close();
@@ -122,7 +122,7 @@ async function editUser(patch) {
 
 async function deleteUser() {
 	try {
-		await call_delete(`/api/users/${ selectedUser.value.id }`);
+		await callDelete(`/api/users/${ selectedUser.value.id }`);
 
 		let index = users.value.findIndex(u => u.id === selectedUser.value.id);
 		users.value.splice(index, 1);
@@ -135,11 +135,11 @@ async function deleteUser() {
 
 async function logoutTelegramBotUser(telegramUserId) {
 	try {
-		await call_delete(`/api/telegram-users/${ telegramUserId }`);
+		await callDelete(`/api/telegram-users/${ telegramUserId }`);
 
-		let telegramUserIndex = selectedUser.value.telegram_bot_users
-			.findIndex(u => u.telegram_user_id === telegramUserId);
-		selectedUser.value.telegram_bot_users.splice(telegramUserIndex, 1);
+		let telegramUserIndex = selectedUser.value.telegramBotUsers
+			.findIndex(u => u.telegramUserId === telegramUserId);
+		selectedUser.value.telegramBotUsers.splice(telegramUserIndex, 1);
 		userVfmModalAttrs.error = '';
 	} catch (err) {
 		userVfmModalAttrs.error = errorToText(err);

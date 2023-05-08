@@ -30,13 +30,13 @@
 			<button @click="edit" :disabled="inProgress">Изменить</button>
 			<button @click="emit('delete')" :disabled="inProgress">Удалить</button>
 		</div>
-		<template v-if="user.telegram_bot_users?.length > 0">
+		<template v-if="user.telegramBotUsers?.length > 0">
 			<hr style="margin: 16px 0 8px 0">
 			<div class="modal--content telegram-bot-users" style="margin-top: 0">
 				<h6>Телеграм аккаунты</h6>
-				<div v-for="telegramBotUser in user.telegram_bot_users">
-					<p>{{ telegramBotUser.telegram_user_id }} (@{{ telegramBotUser.username }})</p>
-					<svg class="icon-18" @click="emit('logoutTelegramBotUser', telegramBotUser.telegram_user_id)">
+				<div v-for="telegramBotUser in user.telegramBotUsers">
+					<p>{{ telegramBotUser.telegramUserId }} (@{{ telegramBotUser.username }})</p>
+					<svg class="icon-18" @click="emit('logoutTelegramBotUser', telegramBotUser.telegramUserId)">
 						<use href="#icon-x" />
 					</svg>
 				</div>
@@ -63,12 +63,12 @@ const isAdmin = ref(false);
 
 function edit() {
 	let patch = {};
-	if (newPassword.value) patch.new_password = newPassword.value;
-	if (isAdmin.value !== props.user.is_admin) patch.is_admin = isAdmin.value;
+	if (newPassword.value) patch.newPassword = newPassword.value;
+	if (isAdmin.value !== props.user.isAdmin) patch.isAdmin = isAdmin.value;
 	emit('edit', patch);
 }
 
 watch(() => props.user, user => {
-	isAdmin.value = user.is_admin;
+	isAdmin.value = user.isAdmin;
 }, { immediate: true });
 </script>

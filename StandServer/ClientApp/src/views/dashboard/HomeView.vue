@@ -18,7 +18,7 @@
 				<p class="state">Состояние: {{ measurement.state }}</p>
 				<p class="t">t: {{ measurement.t }}</p>
 				<router-link class="open-link" :to="{ name: 'sample', params: { id: sampleId }}">Просмотр истории</router-link>
-				<p class="work-time" style="grid-row: span 1;">Время работы: {{ secondsToInterval(measurement.seconds_from_start) }}</p>
+				<p class="work-time" style="grid-row: span 1;">Время работы: {{ secondsToInterval(measurement.secondsFromStart) }}</p>
 				<p class="i">I: {{ measurement.i }}</p>
 
 				<p v-if="!isSampleOk(measurement)"
@@ -45,7 +45,7 @@
 					<Pass :measurement="measurements.at(-1)" v-slot="{ measurement }">
 						<fieldset class="sample-info show-1000">
 							<legend>Скрытые данные из последнего измерения</legend>
-							<p class="show-500">S, %: {{ measurement.duty_cycle }}</p>
+							<p class="show-500">S, %: {{ measurement.dutyCycle }}</p>
 							<p class="show-500">tu, *C: {{ measurement.t }}</p>
 							<p class="show-900">Период, us: {{ measurement.period }}</p>
 							<p class="show-1000">Работа, min: {{ measurement.work }}</p>
@@ -71,8 +71,8 @@
 						<tr v-for="measurement in reverseIterate(measurements)"
 							:class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 							<td>{{ millisToDateTime(measurement.time) }}</td>
-							<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
-							<td class="hide-500">{{ measurement.duty_cycle }}</td>
+							<td>{{ secondsToInterval(measurement.secondsFromStart) }}</td>
+							<td class="hide-500">{{ measurement.dutyCycle }}</td>
 							<td>{{ measurement.t }}</td>
 							<td class="hide-500">{{ measurement.tu }}</td>
 							<td>{{ measurement.i }}</td>

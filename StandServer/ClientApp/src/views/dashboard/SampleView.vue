@@ -20,10 +20,10 @@
 
 		<div class="sample-history-graphs mt-8">
 			<div>
-				<measurements-chart :data="data" title="Температура" x-axis="seconds_from_start" y-axis="t" />
+				<measurements-chart :data="data" title="Температура" x-axis="secondsFromStart" y-axis="t" />
 			</div>
 			<div>
-				<measurements-chart :data="data" title="Ток" x-axis="seconds_from_start" y-axis="i" />
+				<measurements-chart :data="data" title="Ток" x-axis="secondsFromStart" y-axis="i" />
 			</div>
 		</div>
 
@@ -56,8 +56,8 @@
 				<tr v-for="measurement in reverseIterate(data, reverseRecords)" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 					<template v-if="measurement.state !== 'off' || showOffStateRecords || !isSampleOk(measurement)">
 						<td>{{ millisToDateTime(measurement.time) }}</td>
-						<td>{{ secondsToInterval(measurement.seconds_from_start) }}</td>
-						<td>{{ measurement.duty_cycle }}</td>
+						<td>{{ secondsToInterval(measurement.secondsFromStart) }}</td>
+						<td>{{ measurement.dutyCycle }}</td>
 						<td>{{ measurement.t }}</td>
 						<td class="hide-500">{{ measurement.tu }}</td>
 						<td>{{ measurement.i }}</td>
@@ -88,7 +88,7 @@ import { useModal } from 'vue-final-modal'
 import MeasurementsChart from '@/components/MeasurementsChart'
 
 import Pass from "@/components/Pass";
-import { call_get, call_delete, downloadFile, call_post } from '@/utils/api';
+import { callGet, callDelete, downloadFile, callPost } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, millisToDateTime, floorToDay } from "@/utils/timeUtils";
 import { sleep, isSampleOk, errorToText } from "@/utils/utils";
@@ -116,7 +116,7 @@ watch(reverseRecords, async b => localStorage.setItem("reverseRecords", b));
 let samplePeriod = ref(null);
 
 const getSamplePeriod = async () => samplePeriod.value ??= await loadSamplePeriod();
-const loadSamplePeriod = async () => await call_get(`/api/samples/${ props.id }/period`);
+const loadSamplePeriod = async () => await callGet(`/api/samples/${ props.id }/period`);
 
 function setPeriod({ from, to }) {
 	datepicker.setStartDate(floorToDay(new Date(from)));
@@ -134,7 +134,7 @@ const isLoading = ref(false);
 
 async function load() {
 	isLoading.value = true;
-	data.value = await call_get(`/api/samples/${ props.id }`, {
+	data.value = await callGet(`/api/samples/${ props.id }`, {
 		from: datepicker.getStartDate().getTime(),
 		to: datepicker.getEndDate().getTime() + (24 * 60 * 60 * 1000 - 1)
 	});
@@ -160,7 +160,7 @@ const deleteSampleVfmModal = useModal({
 			let attrs = deleteSampleVfmModal.options.attrs;
 			try {
 				attrs.inProgress = true;
-				await call_delete(`/api/samples/${ props.id }`);
+				await callDelete(`/api/samples/${ props.id }`);
 				attrs.inProgress = false;
 				attrs.error = '';
 				await deleteSampleVfmModal.close();

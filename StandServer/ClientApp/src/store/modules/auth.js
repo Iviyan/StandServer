@@ -1,6 +1,6 @@
 import { postj } from '@/utils/fetch'
 import jwt_decode from "jwt-decode"
-import { call_post } from '@/utils/api';
+import { callPost } from '@/utils/api';
 
 export default {
 	state: {
@@ -36,13 +36,13 @@ export default {
 				password: password
 			});
 
-			let jwt = res.access_token;
+			let jwt = res.accessToken;
 			console.log('jwt: ', jwt);
 			console.assert(!!jwt, "JWT must be not null here");
 			ctx.commit('auth', jwt);
 		},
 		async logout({ commit }) {
-			await call_post('/api/logout');
+			await callPost('/api/logout');
 			commit('logout');
 		}
 	}

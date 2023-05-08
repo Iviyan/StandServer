@@ -53,7 +53,7 @@ import * as signalR from '@microsoft/signalr'
 import iziToast from 'izitoast'
 import { useModal } from 'vue-final-modal'
 import ChangePasswordModal from "@/components/ChangePasswordModal.vue";
-import { call_post } from '@/utils/api';
+import { callPost } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { millisToDateTime } from "@/utils/timeUtils";
 import { errorToText } from "@/utils/utils";
@@ -215,10 +215,7 @@ const changePasswordVfmModal = useModal({
 	attrs: {
 		async onSubmit({oldPassword, newPassword}) {
 			try {
-				await call_post('/change-password', {
-					old_password: oldPassword,
-					new_password: newPassword,
-				});
+				await callPost('/change-password', { oldPassword, newPassword });
 
 				changePasswordVfmModal.options.attrs.error = '';
 				await changePasswordVfmModal.close()

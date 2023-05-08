@@ -93,11 +93,11 @@ onMounted(() => {
 					callbacks: {
 						title: context => context[0].raw[props.yAxis],
 						label: context => [
-							` work time: ${ secondsToInterval(context.raw.seconds_from_start) }`,
+							` work time: ${ secondsToInterval(context.raw.secondsFromStart) }`,
 							` datetime: ${ millisToDateTime(context.raw.time) }`,
 							` t: ${ context.raw.t }`,
 							` i: ${ context.raw.i }`,
-							` S: ${ context.raw.duty_cycle }`,
+							` S: ${ context.raw.dutyCycle }`,
 							` state: ${ context.raw.state }`,
 						],
 					},

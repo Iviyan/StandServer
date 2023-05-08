@@ -1,4 +1,4 @@
-import { call_get } from '@/utils/api';
+import { callGet } from '@/utils/api';
 import { arraysEqual, difference } from '@/utils/arrayUtils';
 
 export default {
@@ -27,7 +27,7 @@ export default {
 		},
 		setLastMeasurements(state, value) { state.lastMeasurements = value; },
 		newMeasurements(state, measurements) {
-			for (let { sample_id: sampleId, ...measurement } of measurements) {
+			for (let { sampleId, ...measurement } of measurements) {
 				let arr = state.lastMeasurements[sampleId];
 
 				if (arr.length >= 20) arr.shift();
@@ -39,17 +39,17 @@ export default {
 	},
 	actions: {
 		async loadSampleIds({ commit, state }) {
-			let sampleIds = await call_get('/api/samples');
+			let sampleIds = await callGet('/api/samples');
 			commit('setSampleIds', sampleIds);
 			console.debug("sample ids: ", state.sampleIds);
 		},
 		async loadLastMeasurements({ commit, state }) {
-			let lastMeasurements = await call_get('/api/samples/last', { count: 20, sample_ids: 'active' });
+			let lastMeasurements = await callGet('/api/samples/last', { count: 20, sample_ids: 'active' });
 			commit('setLastMeasurements', lastMeasurements);
 			console.debug("last measurements: ", state.lastMeasurements);
 		},
 		async newMeasurements({ dispatch, commit, state }, measurements) {
-			let newMeasurementsSampleIds = new Int32Array(measurements.map(m => m.sample_id));
+			let newMeasurementsSampleIds = new Int32Array(measurements.map(m => m.sampleId));
 			let oldMeasurementsSampleIds = new Int32Array(Object.keys(measurements)); // TODO: check it
 			newMeasurementsSampleIds.sort();
 			oldMeasurementsSampleIds.sort();
