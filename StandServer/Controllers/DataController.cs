@@ -1,4 +1,5 @@
-﻿using StandServer.Services;
+﻿using CsvHelper.Configuration;
+using StandServer.Services;
 
 namespace StandServer.Controllers;
 
@@ -43,7 +44,8 @@ public class DataController : Controller
 
         if (silent)
         {
-            await context.BulkInsertAsync(measurements);
+            context.AddRange(measurements);
+            await context.SaveChangesAsync();
             foreach (int sampleId in measurements.Select(m => m.SampleId).Distinct())
                 data.SampleIds.Add(sampleId);
             return Ok();
@@ -55,12 +57,11 @@ public class DataController : Controller
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "To add multiple measurements at once for one sample, use the silent parameter");
         
-        await context.BulkInsertAsync(measurements);
+        context.AddRange(measurements);
+        await context.SaveChangesAsync();
 
         foreach (var measurement in measurements)
             data.SampleIds.Add(measurement.SampleId);
-        
-        await context.SaveChangesAsync();
 
         if (telegramService.IsOk)
         {
@@ -97,15 +98,15 @@ public class DataController : Controller
 
     [HttpDelete("samples/{id:int}")]
     public async Task<IActionResult> DeleteSampleMeasurements(int id,
-        [FromServices] DatabaseContext context, [FromServices] CachedData data)
+        [FromServices] ApplicationContext context, [FromServices] CachedData data)
     {
         if (!data.SampleIds.Contains(id))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
 
-        int delCount = await context.Connection.ExecuteAsync($"delete from measurements where sample_id = {id}");
+        int delCount = await context.Measurements.Where(m => m.SampleId == id).ExecuteDeleteAsync();
         data.SampleIds.Remove(id);
 
-        await context.Connection.ExecuteAsync($"VACUUM ANALYZE measurements");
+        await context.Database.ExecuteSqlRawAsync("VACUUM ANALYZE measurements");
 
         return delCount > 0 ? Ok() : BadRequest();
     }
@@ -152,8 +153,7 @@ public class DataController : Controller
 
             if (sampleIds is null)
                 return Problem(statusCode: StatusCodes.Status400BadRequest,
-                    title:
-                    "Invalid sample_ids format, valid format: comma-separated enumeration, \"*\", \"active\" (default).");
+                    title: """Invalid sample_ids format, valid format: comma-separated enumeration, "*", "active" (default).""");
 
             measurements = await context.Connection.QueryAsync<Measurement>(
                 $"select * from get_last_measurements(@count, @sampleIds);",
@@ -199,14 +199,13 @@ public class DataController : Controller
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
             .OrderBy(m => m.Time).ToListAsync();
-
+        
         MemoryStream stream = new();
         using var writer = new StreamWriter(stream);
-        using (var csv = new CsvWriter(writer, new(CultureInfo.InvariantCulture)
+        using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
                {
-                   LeaveOpen = true,
                    Delimiter = ";" // excel
-               }))
+               }, leaveOpen: true))
         {
             csv.Context.RegisterClassMap<MeasurementMap>();
             csv.WriteRecords(measurements);

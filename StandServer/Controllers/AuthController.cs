@@ -36,7 +36,7 @@ public class AuthController : ControllerBase
         if (user == null)
             return Problem(title: "Invalid login", statusCode: StatusCodes.Status401Unauthorized);
 
-        var passwordVerificationResult = PasswordHasher.VerifyHashedPassword(null!, user.Password, model.Password);
+        var passwordVerificationResult = PasswordHasher.VerifyHashedPassword(null!, user.Password, model.Password!);
         if (passwordVerificationResult == PasswordVerificationResult.Failed)
             return Problem(title: "Invalid password", statusCode: StatusCodes.Status401Unauthorized);
 
@@ -58,7 +58,7 @@ public class AuthController : ControllerBase
         var response = new
         {
             AccessToken = jwt, RefreshToken = fullRefreshToken,
-            User = new { user.Id, user.Login }
+            User = new { user.Id, user.Login, user.IsAdmin }
         };
 
         Response.Cookies.Append("RefreshToken", fullRefreshToken,
@@ -81,7 +81,7 @@ public class AuthController : ControllerBase
         [FromServices] ApplicationContext context)
     {
         if (String.IsNullOrWhiteSpace(rawRefreshToken) 
-            && Request.Cookies.TryGetValue("RefreshToken", out string? sToken) && sToken != null)
+            && Request.Cookies.TryGetValue("RefreshToken", out string? sToken))
             rawRefreshToken = sToken;
         if (!TryParseRefreshToken(rawRefreshToken, out Guid token, out Guid deviceUid))
             return Problem(title: "There is no RefreshToken in body or cookie", statusCode: StatusCodes.Status400BadRequest);
@@ -97,7 +97,7 @@ public class AuthController : ControllerBase
             if (newDeviceRelatedToken == null)
                 return Problem(title: "Invalid or expired token", statusCode: StatusCodes.Status400BadRequest);
 
-            await context.RefreshTokens.Where(t => t.DeviceUid == deviceUid).BatchDeleteAsync();
+            await context.RefreshTokens.Where(t => t.DeviceUid == deviceUid).ExecuteDeleteAsync();
             return Problem(title: "The token has already been used. The token may have been stolen.",
                 statusCode: StatusCodes.Status400BadRequest);
         }
@@ -145,7 +145,7 @@ public class AuthController : ControllerBase
     {
         await context.RefreshTokens
             .Where(t => t.DeviceUid == requestData.DeviceUid)
-            .BatchDeleteAsync();
+            .ExecuteDeleteAsync();
 
         Response.Cookies.Delete("RefreshToken");
 
@@ -159,7 +159,7 @@ public class AuthController : ControllerBase
         var jwt = new JwtSecurityToken(
             issuer: authConfig.Jwt.Issuer,
             notBefore: now,
-            claims: new[]
+            claims: new Claim[]
             {
                 new Claim(JwtRegisteredClaimNames.Name, user.Login),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -180,15 +180,15 @@ public class AuthController : ControllerBase
         [FromServices] RequestData requestData,
         [FromBody] ChangePasswordRequest model)
     {
-        string? password = await context.Users
+        string? currentPassword = await context.Users
             .Where(u => u.Id == requestData.UserId)
             .Select(u => u.Password)
             .FirstOrDefaultAsync();
 
-        if (password is null)
+        if (currentPassword is null)
             return Problem(title: "This user seems to have been deleted", statusCode: StatusCodes.Status404NotFound);
 
-        var verificationResult = PasswordHasher.VerifyHashedPassword(null!, password, model.OldPassword);
+        var verificationResult = PasswordHasher.VerifyHashedPassword(null!, currentPassword, model.OldPassword!);
         if (verificationResult == PasswordVerificationResult.Failed)
             return Problem(title: "The old password does not match the current one",
                 statusCode: StatusCodes.Status400BadRequest);
@@ -197,11 +197,12 @@ public class AuthController : ControllerBase
         
         int c = await context.Users
             .Where(u => u.Id == requestData.UserId)
-            .BatchUpdateAsync(u => new User { Password = GetHashPassword(model.NewPassword!) });
+            .ExecuteUpdateAsync(p =>
+                p.SetProperty(u => u.Password, _ => GetHashPassword(model.NewPassword!)));
 
         await context.RefreshTokens
             .Where(t => t.UserId == requestData.UserId && t.DeviceUid != requestData.DeviceUid)
-            .BatchDeleteAsync();
+            .ExecuteDeleteAsync();
 
         await transaction.CommitAsync();
 

@@ -6,9 +6,6 @@ public class ApplicationContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
-    
-    static ApplicationContext()
-        => NpgsqlConnection.GlobalTypeMapper.MapEnum<SampleState>();
 
     public ApplicationContext(DbContextOptions<ApplicationContext> options)
         : base(options) { }
@@ -20,5 +17,10 @@ public class ApplicationContext : DbContext
         // updated or deleted on the database.
         
         modelBuilder.HasPostgresEnum<SampleState>();
+    }
+
+    public static void ConfigureNpgsqlBuilder(NpgsqlDataSourceBuilder builder)
+    {
+        builder.MapEnum<SampleState>();
     }
 }

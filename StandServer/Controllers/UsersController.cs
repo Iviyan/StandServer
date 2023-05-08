@@ -12,7 +12,7 @@ public class UsersController : ControllerBase
     public UsersController(ILogger<UsersController> logger) => this.logger = logger;
     
     [HttpPost("users"), Authorize]
-    public async Task<IActionResult> Register([FromBody] RegisterModel model,
+    public async Task<IActionResult> Add([FromBody] RegisterModel model,
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData)
     {
@@ -94,9 +94,7 @@ public class UsersController : ControllerBase
 
         if (model.IsFieldPresent(nameof(model.NewPassword)))
         {
-            await context.RefreshTokens
-                .Where(t => t.UserId == id)
-                .BatchDeleteAsync();
+            await context.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync();
         }
 
         return StatusCode(StatusCodes.Status204NoContent);
@@ -119,21 +117,21 @@ public class UsersController : ControllerBase
                     statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var telegramBotUsers = await context.TelegramBotUsers
+        var linkedTelegramAccounts = await context.TelegramBotUsers
             .Where(u => u.UserId == id)
             .Select(u => u.TelegramUserId).ToListAsync();
 
-        int c = await context.Users.Where(u => u.Id == id).BatchDeleteAsync();
+        int c = await context.Users.Where(u => u.Id == id).ExecuteDeleteAsync();
         
         if (c <= 0) return Problem(title: "User not found", statusCode: 404);
         
         if (!telegramService.IsOk) return StatusCode(204);
 
-        foreach (var telegramBotUsersChunk in telegramBotUsers.Chunk(30 - 1))
+        foreach (var chunk in linkedTelegramAccounts.Chunk(30 - 1))
         {
-            foreach (var telegramBotUser in telegramBotUsersChunk)
+            foreach (long telegramBotUserId in chunk)
             {
-                await telegramService.BotClient!.SendTextMessageAsync(telegramBotUser,
+                await telegramService.BotClient!.SendTextMessageAsync(telegramBotUserId,
                     "Был произведён выход из аккаунта ввиду удаления пользователя.");
             }
 
@@ -153,7 +151,7 @@ public class UsersController : ControllerBase
         if (requestData.IsAdmin is not true)
             return Problem(title: "You must be an admin to edit user", statusCode: StatusCodes.Status403Forbidden);
 
-        int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).BatchDeleteAsync();
+        int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).ExecuteDeleteAsync();
         
         if (c <= 0) return Problem(title: "Telegram user not found", statusCode: 404);
 

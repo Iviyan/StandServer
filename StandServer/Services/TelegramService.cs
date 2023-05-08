@@ -32,17 +32,6 @@ public static class TelegramServiceExtension
         services.AddHostedService(p => (TelegramService)p.GetRequiredService<ITelegramService>());
         return services;
     }
-    public static IServiceCollection AddTelegramServiceMock(this IServiceCollection services)
-    {
-        services.AddSingleton<ITelegramService, TelegramServiceMock>();
-        return services;
-    }
-}
-
-public class TelegramServiceMock : ITelegramService
-{
-    public TelegramBotClient? BotClient => null;
-    public Task SendAlarm(params Measurement[] measurements) => throw new NotImplementedException();
 }
 
 
@@ -82,7 +71,6 @@ public class TelegramService : BackgroundService, ITelegramService
             {
                 logger.LogError("Telegram configuration is not defined, notifications will not be sent");
                 return;
-                //throw new ConfigurationException("Telegram configuration is not defined");
             }
 
             BotClient = new(new TelegramBotClientOptions(
@@ -134,7 +122,7 @@ public class TelegramService : BackgroundService, ITelegramService
             _ => exception.ToString()
         };
 
-        logger.LogError(exception, "Telegram polling error:\n" + errorMessage);
+        logger.LogError(exception, "Telegram polling error:\n{ErrorMessage}", errorMessage);
         return Task.CompletedTask;
     }
 
@@ -153,16 +141,13 @@ public class TelegramService : BackgroundService, ITelegramService
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        logger.LogError(ex, "Error handling telegram bot command");
+                        logger.LogError(ex, "Error handling telegram bot command\n{ErrorMessage}", ex.Message);
                         await BotClient!.SendTextMessageAsync(message.Chat, "Ошибка выполнения команды",
                             cancellationToken: cancellationToken);
                     }
 
                     break;
                 }
-                /*case { CallbackQuery: CallbackQuery callbackQuery }:
-                    await HandleCallbackQueryAsync(update, callbackQuery, cancellationToken);
-                    break;*/
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -199,10 +184,8 @@ public class TelegramService : BackgroundService, ITelegramService
         async Task<User?> CheckAuth()
         {
             User? currentUser = await GetUser();
-
             if (currentUser == null)
                 await ReplyByTextMessage($"Для выполнения команды необходимо авторизоваться.");
-
             return currentUser;
         }
 
@@ -210,7 +193,7 @@ public class TelegramService : BackgroundService, ITelegramService
             cancellationToken: cancellationToken);
 
         Task<Message> ReplyByTextMessageV2(string msg) => BotClient!.SendTextMessageAsync(message.Chat, msg,
-            ParseMode.MarkdownV2, cancellationToken: cancellationToken);
+            parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
 
         if (command == "/start")
         {
@@ -232,7 +215,6 @@ public class TelegramService : BackgroundService, ITelegramService
                 await ReplyByTextMessage("Неверный формат команды");
                 return;
             }
-
             var (login, password) = (arg![..spacePos], arg[(spacePos + 1)..]);
 
             User? currentUser = await GetUser();
@@ -256,7 +238,8 @@ public class TelegramService : BackgroundService, ITelegramService
             if (currentUser != null)
             {
                 await context.TelegramBotUsers.Where(u => u.TelegramUserId == sender.Id)
-                    .BatchUpdateAsync(u => new() { UserId = authUser.Id },
+                    .ExecuteUpdateAsync(p => p.SetProperty(
+                            u => u.UserId, _ => authUser.Id),
                         cancellationToken: cancellationToken);
             }
             else
@@ -278,7 +261,7 @@ public class TelegramService : BackgroundService, ITelegramService
             if (await CheckAuth() is not User currentUser) return;
 
             await context.TelegramBotUsers.Where(u => u.TelegramUserId == sender.Id)
-                .BatchDeleteAsync(cancellationToken);
+                .ExecuteDeleteAsync(cancellationToken);
 
             await ReplyByTextMessageV2("*Выход*");
         }
@@ -314,8 +297,8 @@ public class TelegramService : BackgroundService, ITelegramService
             string samplesStateText = measurements.Length == 0
                 ? "Данные отсутствуют"
                 : measurements[0].Time.ToString(DateTimeFormat).Replace(".", @"\.") + "\n"
-                + String.Join('\n', measurements.Select(m =>
-                    $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
+                    + String.Join('\n', measurements.Select(m =>
+                        $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
 
             await BotClient!.SendTextMessageAsync(message.Chat, samplesStateText,
                 parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
@@ -353,14 +336,6 @@ public class TelegramService : BackgroundService, ITelegramService
         new() { Command = "/getlink", Description = "Channel with stand notifications" },
         new() { Command = "/getuserid", Description = "Get user id" },
     };
-
-    /*private async Task HandleCallbackQueryAsync(Update update, CallbackQuery callbackQuery,
-        CancellationToken cancellationToken)
-    {
-        if (callbackQuery.Data is not string data) return;
-
-        (string command, string? arg) = ParseCommand(data);
-    }*/
 
     public async Task SendAlarm(params Measurement[] measurements)
     {

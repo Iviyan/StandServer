@@ -6,7 +6,7 @@ public class DatabaseSource
     
     public DatabaseSource(IConfiguration configuration)
     {
-        connectionString = configuration.GetConnectionString("PgsqlConnection");
+        connectionString = configuration.GetConnectionString("PgsqlConnection")!;
     }
     
     public NpgsqlConnection CreateConnection() => new(connectionString);

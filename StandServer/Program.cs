@@ -24,7 +24,6 @@ global using Dapper;
 global using CsvHelper;
 global using FluentValidation;
 global using FluentValidation.AspNetCore;
-global using EFCore.BulkExtensions;
 global using StandServer.Database;
 global using StandServer.Models;
 global using StandServer.Utils;
@@ -47,7 +46,12 @@ configuration
 
 // Database configuration
 
-string connection = builder.Configuration.GetConnectionString("PgsqlConnection");
+string connectionString = builder.Configuration.GetConnectionString("PgsqlConnection")!;
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+ApplicationContext.ConfigureNpgsqlBuilder(dataSourceBuilder);
+var dataSource = dataSourceBuilder.Build();
+
 /*services.AddDbContextPool<ApplicationContext>(options =>
 {
     options.UseNpgsql(connection);
@@ -58,11 +62,7 @@ string connection = builder.Configuration.GetConnectionString("PgsqlConnection")
 }, poolSize: 16);*/ // Error with NpgsqlConnection in ClearOldRefreshTokensService
 services.AddDbContext<ApplicationContext>(options =>
 {
-    options.UseNpgsql(connection);
-#if DEBUG
-    options.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
-        .EnableSensitiveDataLogging();
-#endif
+    options.UseNpgsql(dataSource);
 });
 services.AddSingleton<DatabaseSource>();
 services.AddScoped<DatabaseContext>();
@@ -79,13 +79,7 @@ services.AddSignalR()
         options.PayloadSerializerOptions.Converters.Add(new DateTimeJsonConverter());
     });
 
-// FluentValidation configuration (part)
-
-ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
-ValidatorOptions.Global.DisplayNameResolver =
-    (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
-
-// Controllers, JSON, FluentValidation configuration
+// Controllers, JSON configuration
 
 services.AddControllers(options =>
     {
@@ -101,18 +95,26 @@ services.AddControllers(options =>
         options.AllowInputFormatterExceptionMessages = false;
 #endif
         options.JsonSerializerOptions.Converters.Add(new DateTimeJsonConverter());
-    })
-    .AddFluentValidation(fv =>
-    {
-        fv.DisableDataAnnotationsValidation = true;
-        fv.RegisterValidatorsFromAssemblyContaining<Program>(lifetime: ServiceLifetime.Singleton);
     });
+
+// FluentValidation configuration
+
+ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
+ValidatorOptions.Global.DisplayNameResolver = (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
+ValidatorOptions.Global.PropertyNameResolver = (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
+ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
+
+services.AddFluentValidationAutoValidation(o =>
+{
+    o.DisableDataAnnotationsValidation = true;
+});
+services.AddValidatorsFromAssemblyContaining<Program>(lifetime: ServiceLifetime.Singleton);
 
 // Auth configuration
 
 services.Configure<AuthConfig>(configuration.GetSection(AuthConfig.SectionName));
 
-var authConfig = configuration.GetSection(AuthConfig.SectionName).Get<AuthConfig>();
+var authConfig = configuration.GetSection(AuthConfig.SectionName).Get<AuthConfig>()!;
 var jwtConfig = authConfig.Jwt;
 
 var tokenValidationParams = new TokenValidationParameters
@@ -171,7 +173,7 @@ using (var scope = app.Services.CreateScope())
     if (!await efContext.Users.AnyAsync())
     {
         var firstUser = authConfig.FirstUser;
-        
+
         User user = new()
         {
             Login = firstUser.Login,
@@ -180,16 +182,16 @@ using (var scope = app.Services.CreateScope())
         };
         efContext.Users.Add(user);
         await efContext.SaveChangesAsync();
-
     }
 }
 
 // Loading cache data
 var loadCacheService = app.Services.GetRequiredService<LoadCacheService>();
 await loadCacheService.StartAsync(default);
-await loadCacheService.ExecuteTask;
+await loadCacheService.ExecuteTask!;
 
-if (app.Environment.IsDevelopment()) { }
+
+// --- Request processing ---
 
 var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
 
