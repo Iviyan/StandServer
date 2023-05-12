@@ -8,6 +8,7 @@ const DashboardView = () => import(/* webpackChunkName: "dashboard" */ '../views
 const HomeView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/HomeView.vue')
 const SampleView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/SampleView.vue')
 const UsersView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/UsersView.vue')
+const ConfigurationView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/ConfigurationView.vue')
 
 const isNotAuthenticated = (to, from) => {
 	console.debug(store);
@@ -48,6 +49,10 @@ const routes = [
 				path: 'users', name: 'users',
 				component: UsersView, meta: { title: 'Пользователи' },
 				beforeEnter: isAdmin
+			},
+			{
+				path: 'configuration', name: 'configuration',
+				component: ConfigurationView, meta: { title: 'Настройки' }
 			},
 		]
 	},

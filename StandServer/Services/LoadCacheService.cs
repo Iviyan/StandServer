@@ -1,6 +1,6 @@
 ﻿namespace StandServer.Services;
 
-public class LoadCacheService : BackgroundService
+public class LoadCacheService
 {
     private readonly IServiceProvider serviceProvider;
     private readonly CachedData cachedData;
@@ -13,7 +13,7 @@ public class LoadCacheService : BackgroundService
         this.logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task LoadAsync(CancellationToken stoppingToken = default)
     {
         logger.LogInformation($"Load cache start...");
 

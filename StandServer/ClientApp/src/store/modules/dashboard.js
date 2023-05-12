@@ -4,6 +4,7 @@ import { arraysEqual, difference } from '@/utils/arrayUtils';
 export default {
 	state: {
 		sampleIds: [],
+		configuration: {},
 		lastMeasurements: {},
 		homeViewVisited: false,
 		lastMeasurementsInitialized: false
@@ -16,6 +17,8 @@ export default {
 	},
 	mutations: {
 		setSampleIds(state, value) { state.sampleIds = value; },
+		setConfiguration(state, value) { state.configuration = value; },
+		updateConfiguration(state, patch) { Object.assign(state.configuration, patch); },
 		newSampleIds(state, value) {
 			for (let sampleId of value)
 				if (!state.sampleIds.includes(sampleId))
@@ -42,6 +45,11 @@ export default {
 			let sampleIds = await callGet('/api/samples');
 			commit('setSampleIds', sampleIds);
 			console.debug("sample ids: ", state.sampleIds);
+		},
+		async loadConfiguration({ commit, state }) {
+			let configuration = await callGet('/api/configuration');
+			commit('setConfiguration', configuration);
+			console.debug("configuration: ", state.configuration);
 		},
 		async loadLastMeasurements({ commit, state }) {
 			let lastMeasurements = await callGet('/api/samples/last', { count: 20, sample_ids: 'active' });

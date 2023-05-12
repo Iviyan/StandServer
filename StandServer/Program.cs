@@ -28,7 +28,6 @@ global using StandServer.Database;
 global using StandServer.Models;
 global using StandServer.Utils;
 global using StandServer.Hubs;
-using System.Diagnostics;
 using StandServer.Configuration;
 using StandServer;
 using StandServer.Controllers;
@@ -47,24 +46,12 @@ configuration
 // Database configuration
 
 string connectionString = builder.Configuration.GetConnectionString("PgsqlConnection")!;
+services.AddNpgsqlDataSource(connectionString, ApplicationContext.ConfigureNpgsqlBuilder);
 
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-ApplicationContext.ConfigureNpgsqlBuilder(dataSourceBuilder);
-var dataSource = dataSourceBuilder.Build();
-
-/*services.AddDbContextPool<ApplicationContext>(options =>
-{
-    options.UseNpgsql(connection);
-#if DEBUG
-    options.LogTo(m => Debug.WriteLine(m), LogLevel.Trace)
-        .EnableSensitiveDataLogging();
-#endif
-}, poolSize: 16);*/ // Error with NpgsqlConnection in ClearOldRefreshTokensService
 services.AddDbContext<ApplicationContext>(options =>
 {
-    options.UseNpgsql(dataSource);
+    options.UseNpgsql();
 });
-services.AddSingleton<DatabaseSource>();
 services.AddScoped<DatabaseContext>();
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -148,6 +135,12 @@ services.AddAuthentication(options =>
 services.AddSingleton<CachedData>(); // Some frequently used data
 services.AddTransient<LoadCacheService>(); // A service that load data once when the application starts
 
+// Configuration based on DB table
+services.AddSingleton<ApplicationConfiguration>();
+services.AddSingleton<IApplicationConfiguration, ApplicationConfiguration>(
+    sp => sp.GetRequiredService<ApplicationConfiguration>());
+services.AddScoped<DbStoredConfigurationService>();
+
 services.AddScoped<RequestData>(); // Information about the user who made the request
 
 // SPA configuration
@@ -166,9 +159,10 @@ var app = builder.Build();
 
 Console.WriteLine("Current culture: " + CultureInfo.CurrentCulture);
 
-// Creating a user if there are no users in the system.
+
 using (var scope = app.Services.CreateScope())
 {
+    // Creating a user if there are no users in the system.
     var efContext = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
     if (!await efContext.Users.AnyAsync())
     {
@@ -183,12 +177,15 @@ using (var scope = app.Services.CreateScope())
         efContext.Users.Add(user);
         await efContext.SaveChangesAsync();
     }
+    
+    // Loading cache data
+    var loadCacheService = scope.ServiceProvider.GetRequiredService<LoadCacheService>(); 
+    await loadCacheService.LoadAsync();
+     
+    // Load app configuration
+    var dbStoredConfiguration = scope.ServiceProvider.GetRequiredService<DbStoredConfigurationService>(); 
+    await dbStoredConfiguration.LoadAllAsync();
 }
-
-// Loading cache data
-var loadCacheService = app.Services.GetRequiredService<LoadCacheService>();
-await loadCacheService.StartAsync(default);
-await loadCacheService.ExecuteTask!;
 
 
 // --- Request processing ---

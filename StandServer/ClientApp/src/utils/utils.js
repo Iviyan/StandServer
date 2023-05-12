@@ -1,4 +1,8 @@
 ﻿import { RequestError } from "@/exceptions";
+import store from '../store'
+import { computed } from "vue";
+
+const configuration = computed(() => store.state.dashboard.configuration);
 
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -14,7 +18,7 @@ export function isEmpty(obj) {
 	return true;
 }
 
-export const isSampleOk = measurement => !(measurement.state !== 'work' && measurement.i > 200);
+export const isSampleOk = measurement => !(measurement.state !== 'work' && measurement.i > configuration.value.offSampleMaxI);
 
 export const errorToText = err => err instanceof RequestError
 	? err.rfc7807 ? err.message : 'Ошибка запроса'

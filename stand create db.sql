@@ -65,6 +65,12 @@ create table measurements
 create index measurements_sample_id_idx on measurements (sample_id);
 select create_hypertable('measurements', 'time');
 
+create table configuration
+(
+    key text primary key,
+    value text
+);
+
 CREATE OR REPLACE FUNCTION get_unique_sample_ids() RETURNS table(sample_id int)
 AS $$ BEGIN
     return query

@@ -24,6 +24,7 @@ public class DataController : Controller
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
         [FromServices] ITelegramService telegramService,
+        [FromServices] IApplicationConfiguration applicationConfiguration,
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
         data.LastActiveTime = DateTime.UtcNow;
@@ -66,7 +67,7 @@ public class DataController : Controller
         if (telegramService.IsOk)
         {
             var badMeasurements = measurements
-                .Where(m => m is { State: not SampleState.Work, I: >= 200 })
+                .Where(m => m.State != SampleState.Work && m.I >= applicationConfiguration.OffSampleMaxI)
                 .ToArray();
             
             if (badMeasurements.Any())

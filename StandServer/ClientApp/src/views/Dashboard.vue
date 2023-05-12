@@ -3,7 +3,7 @@
 
 		<div class="scrollbar">
 			<p class="stand-status">
-				<span v-if="standState.lastMeasurementTime">Последнее измерение: {{millisToDateTime(standState.lastMeasurementTime) }}</span>
+				<span v-if="lastMeasurementTime">Последнее измерение: {{millisToDateTime(lastMeasurementTime) }}</span>
 				<span v-else>Измерений нет</span>
 			</p>
 			<ul>
@@ -34,6 +34,11 @@
 				<li class="dark" v-if="store.getters.isAdmin" :class="{active: router.currentRoute.value.name === 'users'}">
 					<router-link :to="{ name: 'users' }">
 						<span class="nav-text">Пользователи</span>
+					</router-link>
+				</li>
+				<li class="dark" :class="{active: router.currentRoute.value.name === 'configuration'}">
+					<router-link :to="{ name: 'configuration' }">
+						<span class="nav-text">Настройки</span>
 					</router-link>
 				</li>
 			</ul>
@@ -67,6 +72,7 @@ const standState = reactive({
 });
 
 const sampleIds = computed(() => store.state.dashboard.sampleIds);
+const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime ?? standState.lastMeasurementTime);
 
 // SignalR
 let signalRConnectionRef = shallowRef(null);
@@ -106,7 +112,10 @@ async function signalRStart() {
 }
 
 onMounted(async () => {
-	await store.dispatch('loadSampleIds');
+	await Promise.all([
+		store.dispatch('loadSampleIds'),
+		store.dispatch('loadConfiguration')
+	]);
 
 	signalRConnection = signalRConnectionRef.value = new signalR.HubConnectionBuilder()
 		.withUrl('/api/stand-hub')

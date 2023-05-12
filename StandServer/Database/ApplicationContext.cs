@@ -6,6 +6,7 @@ public class ApplicationContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
     public DbSet<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
+    public DbSet<ConfigurationElement> Configuration { get; set; } = null!;
 
     public ApplicationContext(DbContextOptions<ApplicationContext> options)
         : base(options) { }

@@ -78,6 +78,18 @@ WITH RECURSIVE t AS (
    )
 SELECT sample_id FROM t WHERE sample_id IS NOT NULL; */
 
+create table configuration
+(
+    key text primary key,
+    value text
+);
+
+/*
+select * from configuration;
+insert into configuration values ('Test',null)
+on conflict (key) do update set value = excluded.value;
+*/
+
 CREATE OR REPLACE FUNCTION get_unique_sample_ids() RETURNS table(sample_id int)
 AS $$ BEGIN
     return query
