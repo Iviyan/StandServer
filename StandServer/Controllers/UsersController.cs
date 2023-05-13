@@ -11,14 +11,11 @@ public class UsersController : ControllerBase
 
     public UsersController(ILogger<UsersController> logger) => this.logger = logger;
     
-    [HttpPost("users"), Authorize]
-    public async Task<IActionResult> Add([FromBody] RegisterModel model,
-        [FromServices] ApplicationContext context,
-        [FromServices] RequestData requestData)
+    [HttpPost("users"), Authorize(AuthPolicy.Admin)]
+    public async Task<IActionResult> AddUser(
+        [FromBody] RegisterModel model,
+        [FromServices] ApplicationContext context)
     {
-        if (requestData.IsAdmin is not true)
-            return Problem(title: "You must be an admin to create a user", statusCode: StatusCodes.Status403Forbidden);
-
         if (await context.Users.AnyAsync(x => x.Login == model.Login))
             return Problem(title: "The user with this login already exists",
                 statusCode: StatusCodes.Status400BadRequest);
@@ -39,14 +36,10 @@ public class UsersController : ControllerBase
         });
     }
 
-    [HttpGet("users"), Authorize]
+    [HttpGet("users"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> GetUsers(
-        [FromServices] ApplicationContext context,
-        [FromServices] RequestData requestData)
+        [FromServices] ApplicationContext context)
     {
-        if (requestData.IsAdmin is not true)
-            return Problem(title: "You must be an admin to get users", statusCode: StatusCodes.Status403Forbidden);
-
         var users = await context.Users
             .Include(u => u.TelegramBotUsers)
             .AsSplitQuery()
@@ -61,15 +54,11 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    [HttpPatch("users/{id:int}"), Authorize]
+    [HttpPatch("users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> EditUser(int id,
         [FromServices] ApplicationContext context,
-        [FromServices] RequestData requestData,
         [FromBody] EditUserRequest model)
     {
-        if (requestData.IsAdmin is not true)
-            return Problem(title: "You must be an admin to edit user", statusCode: StatusCodes.Status403Forbidden);
-
         var user = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
             return Problem(title: "User not found", statusCode: StatusCodes.Status404NotFound);
@@ -100,15 +89,12 @@ public class UsersController : ControllerBase
         return StatusCode(StatusCodes.Status204NoContent);
     }
 
-    [HttpDelete("users/{id:int}"), Authorize]
+    [HttpDelete("users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> DeleteUser(int id,
         [FromServices] ApplicationContext context,
         [FromServices] ITelegramService telegramService,
         [FromServices] RequestData requestData)
     {
-        if (requestData.IsAdmin is not true)
-            return Problem(title: "You must be an admin to delete user", statusCode: StatusCodes.Status403Forbidden);
-
         if (requestData.UserId == id)
         {
             bool isLastAdmin = !await context.Users.AnyAsync(u => u.Id != id && u.IsAdmin == true);
@@ -142,15 +128,11 @@ public class UsersController : ControllerBase
 
     }
 
-    [HttpDelete("telegram-users/{id:int}"), Authorize]
+    [HttpDelete("telegram-users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> LogoutTelegramBotUser(int id,
         [FromServices] ApplicationContext context,
-        [FromServices] ITelegramService telegramService,
-        [FromServices] RequestData requestData)
+        [FromServices] ITelegramService telegramService)
     {
-        if (requestData.IsAdmin is not true)
-            return Problem(title: "You must be an admin to edit user", statusCode: StatusCodes.Status403Forbidden);
-
         int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).ExecuteDeleteAsync();
         
         if (c <= 0) return Problem(title: "Telegram user not found", statusCode: 404);

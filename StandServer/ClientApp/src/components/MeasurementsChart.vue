@@ -81,6 +81,20 @@ function startFetch({ chart }) {
 	}, 500);
 }
 
+function pointBackgroundOrBorderColor(ctx, value) {
+	let color = 'rgb(255, 99, 132)';
+	if (ctx.type !== 'data') return color;
+	if (ctx.raw.state === 'off') color = '#00000082';
+	if (ctx.raw.state === 'relax') color = '#00b30082';
+	return color;
+}
+function segmentBorderColor(ctx, value) {
+	let color = 'rgb(255, 99, 132)';
+	if (ctx.p0.raw.state === 'off') color = '#00000082';
+	if (ctx.p0.raw.state === 'relax') color = '#00b30082';
+	return color;
+}
+
 onMounted(() => {
 	chart = new Chart(chartEl.value, {
 		type: 'line',
@@ -88,12 +102,15 @@ onMounted(() => {
 			datasets: [ {
 				clip: 1000,
 				backgroundColor: 'rgb(255, 99, 132)',
-				borderColor: 'rgb(255, 99, 132)',
-				//data: toRaw(data),
 				label: props.title,
 				parsing: {
 					xAxisKey: props.xAxis,
 					yAxisKey: props.yAxis
+				},
+				pointBackgroundColor: pointBackgroundOrBorderColor,
+				borderColor: pointBackgroundOrBorderColor,
+				segment: {
+					borderColor: segmentBorderColor
 				},
 			} ]
 		},

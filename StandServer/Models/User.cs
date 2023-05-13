@@ -11,6 +11,11 @@ public class User
     public List<TelegramBotUser> TelegramBotUsers { get; set; } = null!;
 }
 
+public static class AuthPolicy
+{
+    public const string Admin = nameof(Admin);
+}
+
 public record LoginModel(string? Login, string? Password);
 
 public class LoginModelValidator : AbstractValidator<LoginModel>

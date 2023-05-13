@@ -13,7 +13,7 @@ public class ConfigurationController : ControllerBase
     public IActionResult GetConfiguration([FromServices] IApplicationConfiguration appConfiguration) 
         => Ok(appConfiguration);
 
-    [HttpPatch("configuration"), Authorize]
+    [HttpPatch("configuration"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> EditConfiguration(
         [FromBody] ApplicationConfigurationPatch patch,
         [FromServices] DbStoredConfigurationService dbStoredConfigurationService,

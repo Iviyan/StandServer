@@ -28,23 +28,35 @@ const props = defineProps({
 const chartEl = ref(null);
 let chart = null;
 
+function pointBackgroundOrBorderColor(ctx, value) {
+	let color = 'rgb(255, 99, 132)';
+	if (ctx.type !== 'data') return color;
+	if (ctx.raw.state === 'off') color = '#00000082';
+	if (ctx.raw.state === 'relax') color = '#00b30082';
+	return color;
+}
+function segmentBorderColor(ctx, value) {
+	let color = 'rgb(255, 99, 132)';
+	if (ctx.p0.raw.state === 'off') color = '#00000082';
+	if (ctx.p0.raw.state === 'relax') color = '#00b30082';
+	return color;
+}
+
 onMounted(() => {
     chart = new Chart(chartEl.value, {
         type: 'line',
         data: {
             datasets: [{
-                backgroundColor: 'rgb(255, 99, 132)',
-                borderColor: 'rgb(255, 99, 132)',
                 data: toRaw(props.data),
 				label: props.title,
 				parsing: {
 					xAxisKey: props.xAxis,
 					yAxisKey: props.yAxis
 				},
+				pointBackgroundColor: pointBackgroundOrBorderColor,
+				borderColor: pointBackgroundOrBorderColor,
 				segment: {
-					borderColor: (ctx, value) => {
-						return ctx.p0.raw.state === 'off' ? 'rgb(0,0,0,0.3)' : undefined
-					}
+					borderColor: segmentBorderColor
 				},
             }]
         },

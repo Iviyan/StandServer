@@ -52,7 +52,8 @@ const routes = [
 			},
 			{
 				path: 'configuration', name: 'configuration',
-				component: ConfigurationView, meta: { title: 'Настройки' }
+				component: ConfigurationView, meta: { title: 'Настройки' },
+				beforeEnter: isAdmin
 			},
 		]
 	},

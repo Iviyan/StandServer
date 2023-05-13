@@ -132,6 +132,11 @@ services.AddAuthentication(options =>
         jwt.TokenValidationParameters = tokenValidationParams;
     });
 
+services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthPolicy.Admin, policy => policy.RequireClaim("IsAdmin", true.ToString()));
+});
+
 services.AddSingleton<CachedData>(); // Some frequently used data
 services.AddTransient<LoadCacheService>(); // A service that load data once when the application starts
 

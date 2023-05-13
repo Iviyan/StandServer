@@ -3,14 +3,37 @@
 
 		<div class="scrollbar">
 			<p class="stand-status">
-				<span v-if="lastMeasurementTime">Последнее измерение: {{millisToDateTime(lastMeasurementTime) }}</span>
+				<span v-if="lastMeasurementTime">Последнее измерение: {{ millisToDateTime(lastMeasurementTime) }}</span>
 				<span v-else>Измерений нет</span>
 			</p>
 			<ul>
-				<li class="darker-shadow-down pd-b" :class="{active: router.currentRoute.value.name === 'home'}">
+				<li class="dark" :class="{active: router.currentRoute.value.name === 'home'}">
 					<router-link :to="{ name: 'home' }">
 						<span class="nav-text">Главная</span>
 					</router-link>
+				</li>
+
+				<li class="dark" v-if="store.getters.isAdmin"
+					:class="{active: router.currentRoute.value.name === 'configuration'}">
+					<router-link :to="{ name: 'configuration' }">
+						<span class="nav-text">Настройки</span>
+					</router-link>
+				</li>
+				<li class="dark" v-if="store.getters.isAdmin"
+					:class="{active: router.currentRoute.value.name === 'users'}">
+					<router-link :to="{ name: 'users' }">
+						<span class="nav-text">Пользователи</span>
+					</router-link>
+				</li>
+				<li class="dark">
+					<a href="#" @click="changePasswordVfmModal.open()">
+						<span class="nav-text">Изменить пароль</span>
+					</a>
+				</li>
+				<li class="darker-shadow-down pd-b">
+					<a href="#" @click="logout">
+						<span class="nav-text">Выход</span>
+					</a>
 				</li>
 
 				<!--suppress EqualityComparisonWithCoercionJS -->
@@ -18,27 +41,6 @@
 					:class="{active: router.currentRoute.value.name === 'sample' && router.currentRoute.value.params.id == sampleId}">
 					<router-link :to="{ name: 'sample', params: { id: sampleIdFormat(sampleId) }}">
 						<span class="nav-text">{{ sampleIdFormat(sampleId) }}</span>
-					</router-link>
-				</li>
-
-				<li class="darker-shadow pd-t">
-					<a href="#" @click="logout">
-						<span class="nav-text">Выход</span>
-					</a>
-				</li>
-				<li class="dark">
-					<a href="#" @click="changePasswordVfmModal.open()">
-						<span class="nav-text">Изменить пароль</span>
-					</a>
-				</li>
-				<li class="dark" v-if="store.getters.isAdmin" :class="{active: router.currentRoute.value.name === 'users'}">
-					<router-link :to="{ name: 'users' }">
-						<span class="nav-text">Пользователи</span>
-					</router-link>
-				</li>
-				<li class="dark" :class="{active: router.currentRoute.value.name === 'configuration'}">
-					<router-link :to="{ name: 'configuration' }">
-						<span class="nav-text">Настройки</span>
 					</router-link>
 				</li>
 			</ul>
@@ -169,8 +171,9 @@ onMounted(async () => {
 		});
 	});
 
-	signalRConnection.on("ActiveInfo", (lastMeasurementTime) =>
-		[standState.lastMeasurementTime] = [lastMeasurementTime]);
+	signalRConnection.on("ActiveInfo", (lastMeasurementTime) => {
+		[ standState.lastMeasurementTime ] = [ lastMeasurementTime ]
+	});
 
 	signalRConnection.on("Msg", data => console.log(data));
 
@@ -222,7 +225,7 @@ async function logout() {
 const changePasswordVfmModal = useModal({
 	component: ChangePasswordModal,
 	attrs: {
-		async onSubmit({oldPassword, newPassword}) {
+		async onSubmit({ oldPassword, newPassword }) {
 			try {
 				await callPost('/change-password', { oldPassword, newPassword });
 

@@ -97,9 +97,10 @@ public class DataController : Controller
         return Ok(measurements);
     }
 
-    [HttpDelete("samples/{id:int}")]
+    [HttpDelete("samples/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> DeleteSampleMeasurements(int id,
-        [FromServices] ApplicationContext context, [FromServices] CachedData data)
+        [FromServices] ApplicationContext context,
+        [FromServices] CachedData data)
     {
         if (!data.SampleIds.Contains(id))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");

@@ -6,7 +6,9 @@
 			<input ref="datepickerEl" />
 			<button class="load-btn" @click="load" :disabled="isLoading">Загрузить</button>
 			<button class="load-csv-btn" @click="loadCsv">Скачать (csv)</button>
-			<button class="del-sample-btn" @click="deleteSampleVfmModal.open()">Удалить образец</button>
+			<button class="del-sample-btn"
+					v-if="store.getters.isAdmin"
+					@click="deleteSampleVfmModal.open()">Удалить образец</button>
 		</div>
 
 		<label class="cb mt-8" style="display: block;">
