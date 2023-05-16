@@ -7,16 +7,18 @@ namespace StandServer.Controllers;
 public class DataController : Controller
 {
     private readonly ILogger<DataController> logger;
+    private readonly IStringLocalizer<DataController> localizer;
 
-    public DataController(ILogger<DataController> logger)
+    public DataController(ILogger<DataController> logger, IStringLocalizer<DataController> localizer)
     {
         this.logger = logger;
+        this.localizer = localizer;
     }
 
     [HttpGet("samples")]
     public IActionResult GetSamplesList([FromServices] CachedData data)
     {
-        return Ok(data.SampleIds /*.Select(id => $"{id:D8}")*/);
+        return Ok(data.SampleIds);
     }
 
     [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
@@ -35,13 +37,13 @@ public class DataController : Controller
             Measurement? measurement = ParseRawMeasurement(measurementRaw);
 
             if (measurement is null)
-                return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid format");
+                return Problem(statusCode: StatusCodes.Status400BadRequest, title: localizer["AddMeasurements.InvalidFormat"]);
 
             measurements.Add(measurement);
         }
 
         if (measurements.Count == 0)
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Empty input");
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: localizer["AddMeasurements.EmptyInput"]);
 
         if (silent)
         {
@@ -49,14 +51,14 @@ public class DataController : Controller
             await context.SaveChangesAsync();
             foreach (int sampleId in measurements.Select(m => m.SampleId).Distinct())
                 data.SampleIds.Add(sampleId);
-            return Ok();
+            return NoContent();
         }
 
         data.LastMeasurementTime = measurements.MaxBy(m => m.Time)!.Time;
 
         if (!measurements.Select(m => m.SampleId).All(new HashSet<int>().Add)) // check duplicates
             return Problem(statusCode: StatusCodes.Status400BadRequest,
-                title: "To add multiple measurements at once for one sample, use the silent parameter");
+                title: localizer["AddMeasurements.UseSilent"]);
         
         context.AddRange(measurements);
         await context.SaveChangesAsync();
@@ -76,7 +78,7 @@ public class DataController : Controller
 
         await standHub.Clients.All.NewMeasurements(measurements);
 
-        return Ok();
+        return NoContent();
     }
 
     [HttpGet("samples/{id:int}")]
@@ -88,7 +90,7 @@ public class DataController : Controller
         to.SetKindUtc() ??= DateTime.MaxValue;
 
         if (!data.SampleIds.Contains(id))
-            return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
+            return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
         
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
@@ -103,14 +105,14 @@ public class DataController : Controller
         [FromServices] CachedData data)
     {
         if (!data.SampleIds.Contains(id))
-            return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
+            return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         int delCount = await context.Measurements.Where(m => m.SampleId == id).ExecuteDeleteAsync();
         data.SampleIds.Remove(id);
 
         await context.Database.ExecuteSqlRawAsync("VACUUM ANALYZE measurements");
 
-        return delCount > 0 ? Ok() : BadRequest();
+        return delCount > 0 ? NoContent() : BadRequest();
     }
 
     [HttpGet("samples/last")]
@@ -119,7 +121,7 @@ public class DataController : Controller
         [FromQuery(Name = "sample_ids")] string sampleIdsRaw = "active", int count = 20)
     {
         if (count <= 0)
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Count must be greater than 0");
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: localizer["GetLastMeasurements.IncorrectCount"]);
 
         IEnumerable<Measurement> measurements;
 
@@ -155,7 +157,7 @@ public class DataController : Controller
 
             if (sampleIds is null)
                 return Problem(statusCode: StatusCodes.Status400BadRequest,
-                    title: """Invalid sample_ids format, valid format: comma-separated enumeration, "*", "active" (default).""");
+                    title: localizer["GetLastMeasurements.InvalidSampleIdsFormat"]);
 
             measurements = await context.Connection.QueryAsync<Measurement>(
                 $"select * from get_last_measurements(@count, @sampleIds);",
@@ -178,7 +180,7 @@ public class DataController : Controller
         [FromServices] DatabaseContext context, [FromServices] CachedData data)
     {
         if (!data.SampleIds.Contains(id))
-            return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
+            return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         SamplePeriod period = (await context.Connection.QueryAsync<SamplePeriod>(
             @"select * from get_sample_period(@id);",
@@ -196,7 +198,7 @@ public class DataController : Controller
         to ??= DateTime.MaxValue;
 
         if (!data.SampleIds.Contains(id))
-            return Problem(statusCode: StatusCodes.Status404NotFound, title: "There are no measurements with this id");
+            return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)

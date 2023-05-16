@@ -1,0 +1,37 @@
+﻿<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <data name="AddMeasurements.InvalidFormat" xml:space="preserve">
+        <value>Неверный формат.</value>
+    </data>
+    <data name="AddMeasurements.EmptyInput" xml:space="preserve">
+        <value>Пустое тело запроса.</value>
+        <comment>AddMeasurements.EmptyInput</comment>
+    </data>
+    <data name="AddMeasurements.UseSilent" xml:space="preserve">
+        <value>Для того, чтобы добавить сразу несколько измерений для одного или нескольких образцов, необходимо использовать silent параметр.</value>
+        <comment>AddMeasurements.UseSilent</comment>
+    </data>
+    <data name="NoMeasurements" xml:space="preserve">
+        <value>Нет измерений с таким номером образца.</value>
+        <comment>GetMeasurements.NoMeasurements</comment>
+    </data>
+    <data name="GetLastMeasurements.IncorrectCount" xml:space="preserve">
+        <value>Count должен быть больше 0.</value>
+        <comment>GetLastMeasurements.IncorrectCount</comment>
+    </data>
+    <data name="GetLastMeasurements.InvalidSampleIdsFormat" xml:space="preserve">
+        <value>Неверный формат sample_ids, доступные форматы: номера, разделённые запятой, "*", "active" (по умолчанию).</value>
+        <comment>GetLastMeasurements.InvalidSampleId</comment>
+    </data>
+</root>

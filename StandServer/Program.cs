@@ -1,5 +1,4 @@
 global using System.Text;
-global using System.Data;
 global using System.Net.Mime;
 global using System.Text.Json;
 global using System.Security.Claims;
@@ -17,6 +16,7 @@ global using System.ComponentModel;
 global using System.ComponentModel.DataAnnotations;
 global using System.ComponentModel.DataAnnotations.Schema;
 global using System.Globalization;
+global using Microsoft.Extensions.Localization;
 global using VueCliMiddleware;
 global using Microsoft.AspNetCore.Localization;
 global using Npgsql;
@@ -84,9 +84,26 @@ services.AddControllers(options =>
         options.JsonSerializerOptions.Converters.Add(new DateTimeJsonConverter());
     });
 
+// Localization
+
+services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+// Localize default HttpValidationProblemDetails error
+
+CultureInfo enUsCulture = new("en-US");
+services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
+{
+    if (context.ProblemDetails.Title == "One or more validation errors occurred."
+        && !CultureInfo.CurrentCulture.Equals(enUsCulture))
+    {
+        var localizer = context.HttpContext.RequestServices.GetRequiredService<IStringLocalizer<Program>>();
+        var localizedString = localizer.GetString("One or more validation errors occurred");
+        if (localizedString.ResourceNotFound == false) context.ProblemDetails.Title = localizedString.Value;
+    }
+});
+
 // FluentValidation configuration
 
-ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 ValidatorOptions.Global.DisplayNameResolver = (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
 ValidatorOptions.Global.PropertyNameResolver = (type, member, expression) => CamelCaseNamingPolicy.FromPascalToCamelCase(member.Name);
 ValidatorOptions.Global.DefaultRuleLevelCascadeMode = CascadeMode.Stop;
@@ -192,7 +209,6 @@ using (var scope = app.Services.CreateScope())
     await dbStoredConfiguration.LoadAllAsync();
 }
 
-
 // --- Request processing ---
 
 var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
@@ -220,6 +236,19 @@ app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api") && conte
     applicationBuilder => applicationBuilder.Run(spaApp.Build()));
 
 app.UsePathBase("/api");
+
+var supportedCultures = new[]
+{
+    new CultureInfo("en-US"),
+    new CultureInfo("ru-RU"),
+};
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("en-US"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
 
 app.UseRouting();
 

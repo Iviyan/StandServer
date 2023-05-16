@@ -8,16 +8,21 @@ namespace StandServer.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly ILogger<UsersController> logger;
+    private readonly IStringLocalizer<UsersController> localizer;
 
-    public UsersController(ILogger<UsersController> logger) => this.logger = logger;
-    
+    public UsersController(ILogger<UsersController> logger, IStringLocalizer<UsersController> localizer)
+    {
+        this.logger = logger;
+        this.localizer = localizer;
+    }
+
     [HttpPost("users"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> AddUser(
         [FromBody] RegisterModel model,
         [FromServices] ApplicationContext context)
     {
         if (await context.Users.AnyAsync(x => x.Login == model.Login))
-            return Problem(title: "The user with this login already exists",
+            return Problem(title: localizer["AddUser.LoginAlreadyInUse"],
                 statusCode: StatusCodes.Status400BadRequest);
 
         User user = new()
@@ -60,8 +65,7 @@ public class UsersController : ControllerBase
         [FromBody] EditUserRequest model)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user is null)
-            return Problem(title: "User not found", statusCode: StatusCodes.Status404NotFound);
+        if (user is null) return NotFound();
 
         if (model.IsFieldPresent(nameof(model.NewPassword))) 
             user.Password = AuthController.GetHashPassword(model.NewPassword!);
@@ -72,7 +76,7 @@ public class UsersController : ControllerBase
             {
                 bool isLastAdmin = await context.Users.AnyAsync(u => u.Id != id && u.IsAdmin == true);
                 if (!isLastAdmin)
-                    return Problem(title: "It is impossible to deprive the rights of a single admin",
+                    return Problem(title: localizer["EditUser.SingleAdministrator"],
                         statusCode: StatusCodes.Status400BadRequest);
             }
 
@@ -86,7 +90,7 @@ public class UsersController : ControllerBase
             await context.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync();
         }
 
-        return StatusCode(StatusCodes.Status204NoContent);
+        return NoContent();
     }
 
     [HttpDelete("users/{id:int}"), Authorize(AuthPolicy.Admin)]
@@ -99,7 +103,7 @@ public class UsersController : ControllerBase
         {
             bool isLastAdmin = !await context.Users.AnyAsync(u => u.Id != id && u.IsAdmin == true);
             if (isLastAdmin)
-                return Problem(title: "It is forbidden to delete a single administrator",
+                return Problem(title: localizer["DeleteUser.SingleAdministrator"],
                     statusCode: StatusCodes.Status400BadRequest);
         }
 
@@ -108,10 +112,10 @@ public class UsersController : ControllerBase
             .Select(u => u.TelegramUserId).ToListAsync();
 
         int c = await context.Users.Where(u => u.Id == id).ExecuteDeleteAsync();
+
+        if (c <= 0) return NotFound();
         
-        if (c <= 0) return Problem(title: "User not found", statusCode: 404);
-        
-        if (!telegramService.IsOk) return StatusCode(204);
+        if (!telegramService.IsOk) return NoContent();
 
         foreach (var chunk in linkedTelegramAccounts.Chunk(30 - 1))
         {
@@ -124,7 +128,7 @@ public class UsersController : ControllerBase
             await Task.Delay(1000);
         }
 
-        return StatusCode(204);
+        return NoContent();
 
     }
 
@@ -134,10 +138,9 @@ public class UsersController : ControllerBase
         [FromServices] ITelegramService telegramService)
     {
         int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).ExecuteDeleteAsync();
-        
-        if (c <= 0) return Problem(title: "Telegram user not found", statusCode: 404);
 
-        if (!telegramService.IsOk) return StatusCode(204);
+        if (c <= 0) return NotFound();
+        if (!telegramService.IsOk) return NoContent();
         
         try
         {
@@ -149,7 +152,7 @@ public class UsersController : ControllerBase
             logger.LogError(ex, "Error sending notification to telegram user about logout");
         }
 
-        return StatusCode(204);
+        return NoContent();
 
     }
 }
