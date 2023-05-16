@@ -11,7 +11,7 @@
 	}
 }
 
-export const reverseIterate = (arr, b = true) => b !== false ? new ReverseIterable(arr) : arr;
+export const reverseIterate = (arr, b = true) => b === true ? new ReverseIterable(arr) : arr;
 
 export function arraysEqual(a, b) {
 	if (a === b) return true;

@@ -6,29 +6,51 @@
 			Максимальный ток в выключенном состоянии
 			<input v-model.number="mutableConfiguration.offSampleMaxI"
 				   style="align-self: center"
+				   :readonly="!isAdmin"
 				   placeholder="offSampleMaxI">
 		</label>
 
-		<button type="submit">Сохранить</button>
+		<button type="submit" v-show="isAdmin" :disabled="!isAdmin">Сохранить</button>
 	</form>
 
-	<p class="error-message">{{ error }}</p>
+	<p class="error-message" v-if="configurationSaveError">{{ configurationSaveError }}</p>
+
+
+	<h3>Загрузка измерений</h3>
+	<form class="configuration-form" @submit.prevent="loadMeasurements" v-if="isAdmin">
+
+		<textarea v-model="rawMeasurements"
+				  :readonly="!isAdmin"
+				  placeholder="00000123 12:00 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W"></textarea>
+
+		<button type="submit" :disabled="isMeasurementsLoading">Загрузить</button>
+	</form>
+
+	<p class="error-message" v-if="loadMeasurementsError">{{ loadMeasurementsError }}</p>
+
+
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useStore } from 'vuex'
-import { callPatch } from '@/utils/api';
+import { callPatch, callPost } from '@/utils/api';
 import { errorToText, isEmpty } from "@/utils/utils";
+import iziToast from "izitoast";
 
 const store = useStore();
 
 const configuration = computed(() => store.state.dashboard.configuration);
+const isAdmin = computed(() => store.getters.isAdmin);
 
 const mutableConfiguration = reactive({
 	offSampleMaxI: 0
 });
-const error = ref('');
+const configurationSaveError = ref('');
+
+const rawMeasurements = ref('');
+const loadMeasurementsError = ref('');
+const isMeasurementsLoading = ref(false);
 
 onMounted(() => {
 	Object.assign(mutableConfiguration, configuration.value);
@@ -44,7 +66,7 @@ async function save() {
 	}
 	console.debug(patch);
 	if (isEmpty(patch)) {
-		error.value = '';
+		configurationSaveError.value = '';
 		return;
 	}
 
@@ -52,9 +74,29 @@ async function save() {
 		await callPatch(`/api/configuration`, patch);
 		store.commit('updateConfiguration', patch);
 
-		error.value = '';
+		configurationSaveError.value = '';
 	} catch (err) {
-		error.value = errorToText(err);
+		configurationSaveError.value = errorToText(err);
+	}
+}
+
+async function loadMeasurements() {
+	try {
+		isMeasurementsLoading.value = true;
+		await callPost(`/api/samples?silent=true`, rawMeasurements.value);
+		isMeasurementsLoading.value = false;
+		rawMeasurements.value = '';
+		loadMeasurementsError.value = '';
+
+		iziToast.info({
+			title: 'Загрузка измерений завершена',
+			message: 'Перезагрузите страницу для того, чтобы увидеть изменения',
+			timeout: 5000,
+			layout: 2
+		});
+	} catch (err) {
+		loadMeasurementsError.value = errorToText(err);
+		isMeasurementsLoading.value = false;
 	}
 }
 
@@ -77,15 +119,28 @@ async function save() {
 	width: 100%;
 	padding: 4px 16px;
 	border-radius: 2px;
-	border: 1px solid #d2d8d8;
+	border: 1px solid #aaa;
 	appearance: none;
 	margin: 0 0 12px 0;
 }
 
 .configuration-form input:focus {
-	border-color: #343642;
+	border-color: #333;
 	box-shadow: 0 0 5px rgba(52, 54, 66, 0.1);
 	outline: none;
+}
+
+.configuration-form textarea {
+	box-sizing: border-box;
+	width: 100%;
+	resize: vertical;
+	padding: 4px 16px;
+	border-radius: 4px;
+	border: 1px solid #aaa;
+	appearance: none;
+	margin: 0;
+	min-height: 50px;
+	height: 150px;
 }
 
 
@@ -105,4 +160,13 @@ async function save() {
 	word-break: break-word;
 }
 
+</style>
+
+<style scoped>
+h3 {
+	font-weight: normal;
+	font-size: 1.25rem;
+	margin: 24px 0 6px 0;
+	text-align: center;
+}
 </style>

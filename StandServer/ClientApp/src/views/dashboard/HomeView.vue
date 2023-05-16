@@ -159,12 +159,16 @@ onMounted(async () => {
 	grid-row-gap: 4px;
 }
 
-.summary > .sample-info:hover {
-	cursor: pointer;
+.sample-info {
+	border: solid 1px #888;
 }
 
-.summary > .sample-info > p {
+.sample-info > p {
 	margin: 0;
+}
+
+.summary > .sample-info:hover {
+	cursor: pointer;
 }
 
 .summary > .sample-info > .id {
@@ -255,41 +259,5 @@ onMounted(async () => {
 	border: 1px solid #bbb;
 	min-width: 0; /* https://css-tricks.com/flexbox-truncated-text/ */
 }
-
-/**/
-
-.sample-info {
-	border: solid 1px #888;
-}
-
-.sample-info > p {
-	margin: 0;
-}
-
-/* measurements table */
-.measurements-table {
-	text-align: center;
-	border-collapse: collapse;
-	border: 0px solid #bbb;
-	width: 100%;
-}
-
-.measurements-table th, .measurements-table td {
-	border: 0.1px solid #aaa;
-	padding: 4px;
-}
-
-.measurements-table th {
-	font-weight: 500;
-	padding: 4px 6px;
-}
-
-.measurements-table tr.off { background-color: rgba(0, 0, 0, 0.03); }
-
-.measurements-table tr.work { background-color: rgba(0, 0, 255, 0.03); }
-
-.measurements-table tr.relax { background-color: rgba(0, 255, 0, 0.03); }
-
-.measurements-table tr.alarm { background-color: rgba(255, 0, 0, 0.08) !important; }
 
 </style>

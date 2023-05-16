@@ -104,15 +104,20 @@ button, input, optgroup, select, textarea {
 	overflow-y: auto;
 }
 
+.modal--content .error-message {
+	margin: 0 !important;
+}
+
 .modal--action {
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	flex-shrink: 0;
-	padding: 1rem 0 0;
+	padding:8px 0 0;
 }
 
 .modal--action > button {
+	flex-grow: 1;
 	padding: 0.25rem 0.5rem;
 	border-width: 1px;
 	border-radius: 0.25rem;

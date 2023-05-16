@@ -31,45 +31,42 @@ async function refreshToken() {
 	} finally { release(); }
 }
 
+export const getAuthHeader = () => ({ 'Authorization': `Bearer ${ store.state.auth.jwt }` });
+const getContentType = data => typeof data === 'object' ? 'application/json' : 'text/plain';
+const getBody = data => typeof data === 'object' ? JSON.stringify(data) : String(data);
+const getRequestParams = data => ({
+	headers: {
+		'Content-Type': getContentType(data),
+		...getAuthHeader()
+	},
+	body: getBody(data)
+})
+
 async function authorizedGet(url = '', data = {}) {
 	return await fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
 		method: 'GET',
-		headers: {
-			'Authorization': `Bearer ${store.state.auth.jwt}`,
-		}
+		headers: getAuthHeader()
 	});
 }
 
 async function authorizedPost(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${store.state.auth.jwt}`,
-		},
-		body: JSON.stringify(data)
+		...getRequestParams(data)
 	});
 }
 
 async function authorizedDelete(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'DELETE',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${store.state.auth.jwt}`,
-		},
-		body: JSON.stringify(data)
+		...getRequestParams(data)
 	});
 }
 
 async function authorizedPatch(url = '', data = {}) {
 	return await fetch(url, {
 		method: 'PATCH',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${store.state.auth.jwt}`,
-		},
-		body: JSON.stringify(data)
+		...getRequestParams(data)
 	});
 }
 

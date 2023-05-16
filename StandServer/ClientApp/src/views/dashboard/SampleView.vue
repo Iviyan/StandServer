@@ -16,7 +16,7 @@
 			<span>Показывать измерения в выключенном состоянии</span>
 		</label>
 		<label class="cb" style="display: block;">
-			<input type="checkbox" v-model="reverseRecords">
+			<input type="checkbox" v-model="showLastRecordsFirst">
 			<span>Отображать сначала последние измерения</span>
 		</label>
 
@@ -55,7 +55,7 @@
 					<th class="hide-900">Частота, GHz</th>
 					<th style="overflow-wrap: anywhere;">Состояние</th>
 				</tr>
-				<tr v-for="measurement in reverseIterate(data, reverseRecords)" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
+				<tr v-for="measurement in reverseIterate(data, showLastRecordsFirst)" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 					<template v-if="measurement.state !== 'off' || showOffStateRecords || !isSampleOk(measurement)">
 						<td>{{ millisToDateTime(measurement.time) }}</td>
 						<td>{{ secondsToInterval(measurement.secondsFromStart) }}</td>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, watch, shallowRef, onMounted } from 'vue';
+import { ref, watch, shallowRef, onMounted, computed } from 'vue';
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router';
 
@@ -90,14 +90,13 @@ import { useModal } from 'vue-final-modal'
 import MeasurementsChart from '@/components/MeasurementsChart'
 
 import Pass from "@/components/Pass";
-import { callGet, callDelete, downloadFile, callPost } from '@/utils/api';
+import { callGet, callDelete, downloadFile } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, millisToDateTime, floorToDay } from "@/utils/timeUtils";
-import { sleep, isSampleOk, errorToText } from "@/utils/utils";
+import { isSampleOk, errorToText } from "@/utils/utils";
 import iziToast from "izitoast";
 import { RequestError } from "@/exceptions";
 import { reverseIterate } from "@/utils/arrayUtils";
-import ChangePasswordModal from "@/components/ChangePasswordModal.vue";
 
 const store = useStore();
 const router = useRouter();
@@ -107,11 +106,13 @@ const props = defineProps({
 });
 
 const data = shallowRef([]);
-const showOffStateRecords = ref(localStorage.getItem("showOffStateRecords") ?? true);
-const reverseRecords = ref(localStorage.getItem("reverseRecords") ?? false);
+const showOffStateRecords = ref((localStorage.getItem("showOffStateRecords") ?? 'true') === 'true');
+const showLastRecordsFirst = ref((localStorage.getItem("showLastRecordsFirst") ?? 'false') === 'true');
+
+const sortedMeasurements = computed(() => reverseIterate(data, showLastRecordsFirst.value));
 
 watch(showOffStateRecords, async b => localStorage.setItem("showOffStateRecords", b));
-watch(reverseRecords, async b => localStorage.setItem("reverseRecords", b));
+watch(showLastRecordsFirst, async b => localStorage.setItem("showLastRecordsFirst", b));
 
 // Period
 
@@ -141,6 +142,7 @@ async function load() {
 		to: datepicker.getEndDate().getTime() + (24 * 60 * 60 * 1000 - 1)
 	});
 	console.debug(data.value);
+	console.debug(sortedMeasurements.value);
 	isLoading.value = false;
 }
 
@@ -290,33 +292,6 @@ watch(() => props.id, async id => {
 .sample-info > p {
 	margin: 0;
 }
-
-/* */
-
-.measurements-table {
-	text-align: center;
-	border-collapse: collapse;
-	border: 0px solid grey;
-	width: 100%;
-}
-
-.measurements-table th, .measurements-table td {
-	border: 0.1px solid #aaa;
-	padding: 4px;
-}
-
-.measurements-table th {
-	font-weight: 500;
-	padding: 4px 6px;
-}
-
-.measurements-table tr.off { background-color: rgba(0, 0, 0, 0.03); }
-
-.measurements-table tr.work { background-color: rgba(0, 0, 255, 0.03); }
-
-.measurements-table tr.relax { background-color: rgba(0, 255, 0, 0.03); }
-
-.measurements-table tr.alarm { background-color: rgba(255, 0, 0, 0.08) !important; }
 
 /* sample graphs */
 

@@ -13,8 +13,7 @@
 					</router-link>
 				</li>
 
-				<li class="dark" v-if="store.getters.isAdmin"
-					:class="{active: router.currentRoute.value.name === 'configuration'}">
+				<li class="dark" :class="{active: router.currentRoute.value.name === 'configuration'}">
 					<router-link :to="{ name: 'configuration' }">
 						<span class="nav-text">Настройки</span>
 					</router-link>
@@ -508,6 +507,33 @@ nav ul, nav li {
 	text-align: center;
 	word-break: break-word;
 }
+
+/* measurements table */
+
+.measurements-table {
+	text-align: center;
+	border-collapse: collapse;
+	border: 0px solid grey;
+	width: 100%;
+}
+
+.measurements-table th, .measurements-table td {
+	border: 0.1px solid #aaa;
+	padding: 4px;
+}
+
+.measurements-table th {
+	font-weight: 500;
+	padding: 4px 6px;
+}
+
+.measurements-table tr.off { background-color: rgba(0, 0, 0, 0.03); }
+
+.measurements-table tr.work { background-color: rgba(0, 0, 255, 0.03); }
+
+.measurements-table tr.relax { background-color: rgba(0, 255, 0, 0.03); }
+
+.measurements-table tr.alarm { background-color: rgba(255, 0, 0, 0.08) !important; }
 
 </style>
 

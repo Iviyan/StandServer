@@ -25,12 +25,11 @@
 					   @click="newPasswordShow = !newPasswordShow">{{ newPasswordShow ? 'Hide' : 'Show' }}</a>
 				</p>
 
-				<p class="error-message">{{ props.error }}</p>
+				<p class="error-message" v-if="props.error">{{ props.error }}</p>
 			</div>
 		</div>
 		<div class="modal--action">
 			<button @click="emit('submit', {oldPassword, newPassword})">Изменить</button>
-			<button @click="emit('cancel')">Отмена</button>
 		</div>
 	</vue-final-modal>
 </template>

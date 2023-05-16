@@ -309,13 +309,14 @@ public class TelegramService : BackgroundService, ITelegramService
         }
     }
 
-    private const string StartCommandText =
-        @"Для работы с ботом необходимо авторизоваться.
+    private const string StartCommandText = """
+Для работы с ботом необходимо авторизоваться.
 
 /login [username] [password] - авторизация
 /logout - выход
 /getlink - канал с уведомлениями стенда
-/state - состояние образцов";
+/state - состояние образцов
+""";
 
     private static readonly BotCommand[] BotCommandsRu =
     {

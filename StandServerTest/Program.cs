@@ -9,8 +9,8 @@ const string url = "http://192.168.1.23/api/samples";
 const string url = "http://localhost:5161/api/samples";
 #endif
 
-const int samplesCount = 4;
-const int interval = 5;
+const int samplesCount = 3;
+const int interval = 10; //seconds
 
 HttpClient client = new();
 PeriodicTimer timer = new(TimeSpan.FromSeconds(interval));
@@ -20,7 +20,7 @@ CancellationToken ct = cts.Token;
 const int secondsFromStart = 0;
 
 Measurement[] samples = Enumerable.Range(1, samplesCount)
-    .Select(i => new Measurement { SampleId = 100 + i, SecondsFromStart = secondsFromStart - interval})
+    .Select(i => new Measurement { SampleId = 051523 + i, SecondsFromStart = secondsFromStart - interval})
     .ToArray();
 
 Console.CancelKeyPress += (_, _) => cts.Cancel();
@@ -85,7 +85,7 @@ static string GetMeasurementString(Measurement m)
        $"{m.T}|{m.Tu}|{m.I}|{m.Period}|{m.Work}|{m.Relax}|{m.Frequency}|{m.State.ToString("G")[0]}";
 
 static string SecondsToInterval(int s) => $"{(s / 60 / 60).ToString().PadLeft(2, '0')}" +
-                                          $":{(s / 60).ToString().PadLeft(2, '0')}" +
+                                          $":{(s / 60 % 60).ToString().PadLeft(2, '0')}" +
                                           $":{(s % 60).ToString().PadLeft(2, '0')}";
 
 public enum SampleState { Off, Work, Relax }
@@ -100,7 +100,7 @@ public class Measurement
     public short Tu { get; set; } = 50;
     public short I { get; set; }
     public short Period { get; set; } = 1000;
-    public short Work { get; set; } = 5;
+    public short Work { get; set; } = 2;
     public short Relax { get; set; } = 1;
     public short Frequency { get; set; } = 10000;
     public SampleState State { get; set; } = SampleState.Work;

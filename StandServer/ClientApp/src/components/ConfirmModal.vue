@@ -11,7 +11,7 @@
 			<p class="cm-error" v-if="error">{{ error }}</p>
 		</div>
 		<div class="modal--action">
-			<button @click="emit('submit')" :disabled="inProgress" class="cm-submit">{{ actionName }}</button>
+			<button @click="emit('submit')" :disabled="inProgress">{{ actionName }}</button>
 		</div>
 	</vue-final-modal>
 </template>
@@ -31,10 +31,6 @@ const props = defineProps({
 </script>
 
 <style>
-.cm-submit {
-	flex-grow: 1;
-}
-
 .cm-error {
 	color: #c00;
 	text-align: center;
