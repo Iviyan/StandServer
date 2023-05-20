@@ -177,10 +177,9 @@ services.Configure<NotificationsConfig>(configuration.GetSection(NotificationsCo
 // Telegram notification service
 services.AddTelegramService();
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 var app = builder.Build();
-
-Console.WriteLine("Current culture: " + CultureInfo.CurrentCulture);
-
 
 using (var scope = app.Services.CreateScope())
 {
@@ -213,7 +212,7 @@ using (var scope = app.Services.CreateScope())
 
 var spaApp = ((IEndpointRouteBuilder)app).CreateApplicationBuilder();
 
-spaApp.UseFixedSpa(spaBuilder =>
+spaApp.UseSpa(spaBuilder =>
 {
     spaBuilder.Options.SourcePath = "ClientApp";
 
