@@ -42,6 +42,7 @@
 						<span class="nav-text">{{ sampleIdFormat(sampleId) }}</span>
 					</router-link>
 				</li>
+				<p v-if="sampleIds.length === 0" class="sample-missing-message">Образцов нет</p>
 			</ul>
 		</div>
 	</nav>
@@ -383,6 +384,10 @@ nav ul, nav li {
 	padding: 0;
 }
 
+.sample-missing-message {
+	margin: 8px 0 0 0;
+	text-align: center;
+}
 
 /* Darker element side menu Start*/
 
@@ -499,13 +504,6 @@ nav ul, nav li {
 	transform: translateY(-50%);
 	font-size: 14px;
 	color: #343642;
-}
-
-.s-form .error-message {
-	margin: 8px 0;
-	color: #c00;
-	text-align: center;
-	word-break: break-word;
 }
 
 /* measurements table */

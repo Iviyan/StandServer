@@ -5,7 +5,7 @@ export class RequestError extends Error {
 
 	  this.rfc7807 = !!json;
       this.response = json;
-      this.message = json?.title;
+      this.title = json?.title;
       this.status = response.status;
     }
   }

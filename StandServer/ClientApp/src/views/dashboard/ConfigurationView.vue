@@ -3,7 +3,7 @@
 
 	<form class="configuration-form" @submit.prevent="save">
 		<label>
-			Максимальный ток в выключенном состоянии
+			Максимальный ток в нерабочем состоянии
 			<input v-model.number="mutableConfiguration.offSampleMaxI"
 				   style="align-self: center"
 				   :readonly="!isAdmin"
@@ -151,13 +151,6 @@ async function loadMeasurements() {
 	background-color: transparent;
 	cursor: pointer;
 	width: 100%;
-}
-
-.error-message {
-	margin: 8px 0;
-	color: #c00;
-	text-align: center;
-	word-break: break-word;
 }
 
 </style>

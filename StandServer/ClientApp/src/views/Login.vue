@@ -149,5 +149,8 @@ async function tryLogin() {
 	text-align: center;
 	margin: 8px 0 0 0;
 	color: #bb2626;
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.25;
 }
 </style>

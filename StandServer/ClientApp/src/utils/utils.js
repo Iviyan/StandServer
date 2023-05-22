@@ -20,6 +20,17 @@ export function isEmpty(obj) {
 
 export const isSampleOk = measurement => !(measurement.state !== 'work' && measurement.i > configuration.value.offSampleMaxI);
 
-export const errorToText = err => err instanceof RequestError
-	? err.rfc7807 ? err.message : 'Ошибка запроса'
-	: 'Неизвестная ошибка';
+export function errorToText(err) {
+	if (!(err instanceof RequestError)) return 'Неизвестная ошибка';
+	if (!err.rfc7807) return 'Ошибка запроса';
+	let errors = err.response.errors;
+	console.log(errors);
+	if (errors === undefined || isEmpty(errors)) return err.title;
+	let result = err.title;
+	for (let prop in errors) {
+		console.log(errors[prop]);
+		result += '\n';
+		result += errors[prop].join("\n");
+	}
+	return result;
+}

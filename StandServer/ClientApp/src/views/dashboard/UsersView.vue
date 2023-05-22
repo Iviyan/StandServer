@@ -222,13 +222,6 @@ async function logoutTelegramBotUser(telegramUserId) {
 	color: #343642;
 }
 
-.error-message {
-	margin: 8px 0;
-	color: #c00;
-	text-align: center;
-	word-break: break-word;
-}
-
 .users-table {
 	text-align: center;
 	border-collapse: collapse;

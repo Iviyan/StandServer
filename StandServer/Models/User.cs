@@ -22,7 +22,7 @@ public class LoginModelValidator : AbstractValidator<LoginModel>
 {
     public LoginModelValidator()
     {
-        RuleFor(user => user.Login).NotNull();
+        RuleFor(user => user.Login).NotNull().NotEmpty();
         RuleFor(user => user.Password).NotNull();
     }
 }
@@ -32,7 +32,7 @@ public class RegisterModelValidator : AbstractValidator<RegisterModel>
 {
     public RegisterModelValidator()
     {
-        RuleFor(user => user.Login).NotNull().Length(0, 30);
+        RuleFor(user => user.Login).NotNull().Length(1, 30);
         RuleFor(user => user.Password).NotNull().Length(1, 30);
     }
 }

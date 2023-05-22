@@ -228,7 +228,7 @@ watch(() => props.id, async id => {
 		if (error instanceof RequestError && error.rfc7807) {
 			iziToast.error({
 				title: 'Ошибка открытия страницы образца. Возможно образца не существует.',
-				message: 'Ошибка: ' + error.message,
+				message: 'Ошибка: ' + error.title,
 				layout: 2,
 				timeout: 5000,
 				class: "iziToast-sample"

@@ -22,7 +22,7 @@ onErrorCaptured((err, vm, info) => {
 		if (err.rfc7807) {
 			iziToast.error({
 				title: 'Ошибка запроса.',
-				message: err.message,
+				message: err.title,
 				layout: 2,
 				timeout: 4000,
 				class: "iziToast-api-error"
@@ -59,6 +59,15 @@ button, input, optgroup, select, textarea {
 	font-family: inherit;
 	font-size: inherit;
 	line-height: inherit;
+}
+
+.error-message {
+	margin: 8px 0;
+	color: #c00;
+	text-align: center;
+	white-space: pre-wrap;
+	word-break: break-word;
+	line-height: 1.25;
 }
 
 /* modal styles */
