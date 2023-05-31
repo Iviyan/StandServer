@@ -223,7 +223,7 @@ public class TelegramService : BackgroundService, ITelegramService
                 .FirstOrDefaultAsync(x => x.Login == login, cancellationToken);
             if (authUser == null)
             {
-                await ReplyByTextMessage("Invalid login");
+                await ReplyByTextMessage("Неверный логин");
                 return;
             }
 
@@ -231,7 +231,7 @@ public class TelegramService : BackgroundService, ITelegramService
                 authUser.Password, password);
             if (passwordVerificationResult == PasswordVerificationResult.Failed)
             {
-                await ReplyByTextMessage("Invalid password");
+                await ReplyByTextMessage("Неверный пароль");
                 return;
             }
 

@@ -40,4 +40,7 @@
     <data name="GetLastMeasurements.InvalidSampleIdsFormat" xml:space="preserve">
         <value>Invalid sample_ids format, valid format: comma-separated enumeration, "*", "active" (default).</value>
     </data>
+    <data name="AddMeasurements.Duplicates" xml:space="preserve">
+        <value>There cannot be measurements with the same sample number and measurement time. ({0:D8} {1:HH:mm:ss dd.MM.yyyy})</value>
+    </data>
 </root>

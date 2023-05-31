@@ -1,6 +1,26 @@
+-- Init db by postgres using command line tool psql
+
+create user stand with password 'standserver';
+
+create database stand;
+
+grant all privileges on database stand to stand;
+
+-- Connect to stand database (psql command)
+\c stand 
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stand;
+
+alter default privileges in schema public grant all privileges on tables to stand;
+alter default privileges in schema public grant all privileges on sequences to stand;
+alter default privileges in schema public grant all privileges on functions to stand;
+alter default privileges in schema public grant all privileges on types to stand;
+alter default privileges in schema public grant all privileges on routines to stand;
+
+
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
-create table users
+CREATE TABLE users
 (
     id serial PRIMARY KEY,
     login varchar(30) UNIQUE NOT NULL,
@@ -15,7 +35,7 @@ create table telegram_bot_users
     username varchar(32) NULL
 );
 
-create table refresh_tokens
+CREATE TABLE refresh_tokens
 (
     id uuid PRIMARY KEY,
     user_id integer NOT NULL REFERENCES users (id) on delete cascade,
@@ -25,16 +45,7 @@ create table refresh_tokens
 
 create index refresh_tokens_device_uid_index on refresh_tokens(device_uid);
 
-/*
-select * from refresh_tokens;
-delete from refresh_tokens;
-
-insert into refresh_tokens(id, user_id, device_uid, expires)
-SELECT gen_random_uuid(), 1, gen_random_uuid(), now() + '2 day'
-FROM generate_series(1, 100000) AS t(i);
-*/
-
-create type sample_state AS ENUM ('off', 'work', 'relax');
+CREATE TYPE sample_state AS ENUM ('off', 'work', 'relax');
 
 create table measurements
 (
@@ -54,41 +65,11 @@ create table measurements
 create index measurements_sample_id_idx on measurements (sample_id);
 select create_hypertable('measurements', 'time');
 
-/*
-insert into measurements values (1, '01.01.2022 12:05', 60, 20, 45, 50, 7167, 1000, 50, 10, 10000, true);
-select * from measurements order by time;
-delete from measurements where sample_id = 90522;
-
-SELECT m.sample_id, m.time, m.seconds_from_start, m.duty_cycle, m.t, m.tu, m.i, m.period, m.work, m.relax, m.frequency, m.state
-	FROM measurements AS m
-	WHERE ((m.sample_id = 90522) AND (m.time >= '01.01.2022')) AND (m.time <= '01.01.2023')
-
-
-insert into users(login, password) values('admin', 'admin');
-
-select * from measurements where sample_id = 1 and time > '01.01.2022';
-
-select distinct sample_id from measurements;
-
-WITH RECURSIVE t AS (
-	(SELECT sample_id FROM measurements ORDER BY sample_id LIMIT 1)
-	UNION ALL
-	SELECT (SELECT sample_id FROM measurements WHERE sample_id > t.sample_id ORDER BY sample_id LIMIT 1)
-		FROM t WHERE t.sample_id IS NOT NULL
-   )
-SELECT sample_id FROM t WHERE sample_id IS NOT NULL; */
-
 create table configuration
 (
     key text primary key,
     value text
 );
-
-/*
-select * from configuration;
-insert into configuration values ('Test',null)
-on conflict (key) do update set value = excluded.value;
-*/
 
 CREATE OR REPLACE FUNCTION get_unique_sample_ids() RETURNS table(sample_id int)
 AS $$ BEGIN
@@ -102,8 +83,6 @@ AS $$ BEGIN
         )
         SELECT t.sample_id FROM t WHERE t.sample_id IS NOT NULL;
 END $$ LANGUAGE plpgsql;
-
--- select get_unique_sample_ids();
 
 CREATE OR REPLACE FUNCTION get_sample_period(p_sample_id int)
     RETURNS table ( "from" timestamptz, "to" timestamptz )
@@ -125,29 +104,6 @@ AS $$ BEGIN
         from  t;
 END $$ LANGUAGE plpgsql;
 
--- select * from get_sample_period(90522);
-
-/*
-select oldest.time as first,
-	   newest.time as last  
-from
-  (select time from measurements where sample_id = 90522 order by time limit 1) as oldest,
-  (select time from measurements where sample_id = 90522 order by time desc limit 1) as newest;
-
-select (select time from measurements where sample_id = 90522 order by time limit 1) as first,
-	   (select time from measurements where sample_id = 90522 order by time desc limit 1) as last
-
-with t as (select distinct sample_id from measurements)
-select 
-	  (select time from measurements where sample_id = t.sample_id order by time limit 1) as oldest,
-	  (select time from measurements where sample_id = t.sample_id order by time desc limit 1) as newest
-from  t;
-
-select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
-( select *, ROW_NUMBER() OVER(PARTITION BY sample_id ORDER BY time) AS row from measurements ) as a
-where row <= 2;
-*/
-
 CREATE OR REPLACE FUNCTION get_last_measurements(count int)
     RETURNS setof measurements
 AS $$ BEGIN
@@ -156,8 +112,6 @@ AS $$ BEGIN
             ( select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements ) as q
         where row <= count order by time asc;
 END $$ LANGUAGE plpgsql;
-
--- select * from get_last_measurements(5);
 
 CREATE OR REPLACE FUNCTION get_last_measurements(count int, sample_ids int[])
     RETURNS setof measurements
@@ -170,23 +124,3 @@ AS $$ BEGIN
             ) as q
         where row <= count order by time asc;
 END $$ LANGUAGE plpgsql;
-
--- select * from get_last_measurements(20, array[80822])
-
--- VACUUM ANALYZE measurements;
-
-/*
-ALTER TABLE measurements ALTER COLUMN state TYPE sample_state
-using case
-	when state = false then 'off'::sample_state
-	when state = true and i > 100 then 'work'::sample_state
-	else 'relax'::sample_state
-end;
- */
-
-/*
-ALTER TABLE refresh_tokens
-    DROP CONSTRAINT refresh_tokens_user_id_fkey,
-    ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id)
-        REFERENCES users (id) ON DELETE CASCADE;
-*/

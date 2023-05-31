@@ -19,6 +19,18 @@
         <PackageReference Include="Telegram.Bot" Version="19.0.0" />
         <PackageReference Include="VueCliMiddleware" Version="6.0.0" />
     </ItemGroup>
+    
+    <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+        <Content Remove="*.Production.json" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(Configuration)' == 'Release'">
+        <Content Remove="*.Development.json" />
+        <ProdFilesToRename Include="*.Production.json" />
+    </ItemGroup>
+    <Target Name="RenameAppsettingsProduction" Condition="'$(Configuration)' == 'Release'" AfterTargets="Publish">
+        <Message Text="ProdFilesToRename: @(ProdFilesToRename->'$(PublishDir)%(Identity)')" />
+        <Move SourceFiles="@(ProdFilesToRename->'$(PublishDir)%(Identity)')" DestinationFiles="@(ProdFilesToRename-&gt;Replace('.Production', '')-&gt;'$(PublishDir)%(Identity)')" />
+    </Target>
 
     <PropertyGroup>
         <SpaRoot>ClientApp\</SpaRoot>
@@ -52,7 +64,6 @@
             <DistFiles Include="$(SpaRoot)dist\**" />
             <ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
                 <RelativePath>%(DistFiles.Identity)</RelativePath>
-                <!--<RelativePath>wwwroot\%(RecursiveDir)%(FileName)%(Extension)</RelativePath>-->
                 <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
                 <ExcludeFromSingleFile>True</ExcludeFromSingleFile>
             </ResolvedFileToPublish>

@@ -30,7 +30,7 @@ public class DataController : Controller
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
         data.LastActiveTime = DateTime.UtcNow;
-        
+
         List<Measurement> measurements = new();
         foreach (string measurementRaw in raw.GetLines(removeEmptyLines: true))
         {
@@ -44,6 +44,26 @@ public class DataController : Controller
 
         if (measurements.Count == 0)
             return Problem(statusCode: StatusCodes.Status400BadRequest, title: localizer["AddMeasurements.EmptyInput"]);
+
+        for (int i = 0; i < measurements.Count; i++)
+        {
+            int sampleId = measurements[i].SampleId;
+            DateTime time = measurements[i].Time;
+
+            bool checkDuplicatesFail = false;
+            for (int j = 0; j < measurements.Count && j != i; j++)
+            {
+                var cMeasurement = measurements[j];
+                checkDuplicatesFail = cMeasurement.SampleId == sampleId && cMeasurement.Time == time;
+                if (checkDuplicatesFail) break;
+            }
+
+            if (checkDuplicatesFail)
+            {
+                string error = localizer.GetString("AddMeasurements.Duplicates", sampleId, time.ToLocalTime());
+                return Problem(statusCode: StatusCodes.Status400BadRequest, title: error);
+            }
+        }
 
         if (silent)
         {
@@ -59,7 +79,7 @@ public class DataController : Controller
         if (!measurements.Select(m => m.SampleId).All(new HashSet<int>().Add)) // check duplicates
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: localizer["AddMeasurements.UseSilent"]);
-        
+
         context.AddRange(measurements);
         await context.SaveChangesAsync();
 
@@ -71,7 +91,7 @@ public class DataController : Controller
             var badMeasurements = measurements
                 .Where(m => m.State != SampleState.Work && m.I >= applicationConfiguration.OffSampleMaxI)
                 .ToArray();
-            
+
             if (badMeasurements.Any())
                 await telegramService.SendAlarm(badMeasurements);
         }
@@ -91,7 +111,7 @@ public class DataController : Controller
 
         if (!data.SampleIds.Contains(id))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
-        
+
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
             .OrderBy(m => m.Time).Cast<IIndependentMeasurement>().ToListAsync();
@@ -203,7 +223,7 @@ public class DataController : Controller
         var measurements = await context.Measurements.AsNoTracking()
             .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
             .OrderBy(m => m.Time).ToListAsync();
-        
+
         MemoryStream stream = new();
         using var writer = new StreamWriter(stream);
         using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
@@ -223,10 +243,11 @@ public class DataController : Controller
     {
         //00000123 12:01 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W
         if (str.Length < 41) return null;
-        
+
         ReadOnlySpan<char> s = str.AsSpan();
-        
+
         int valueStartIndex = 0, nextSeparatorIndex = -1;
+
         bool TryNext(char separator = ' ')
         {
             valueStartIndex = nextSeparatorIndex + 1;

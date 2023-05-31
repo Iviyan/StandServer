@@ -111,7 +111,7 @@ async function editUser(patch) {
 	try {
 		if (!isEmpty(patch)) {
 			await callPatch(`/api/users/${ selectedUser.value.id }`, patch);
-			if (patch.isAdmin) selectedUser.value.isAdmin = patch.isAdmin;
+			if (patch.isAdmin !== undefined) selectedUser.value.isAdmin = patch.isAdmin;
 		}
 		userVfmModalAttrs.error = '';
 		await userVfmModal.close();

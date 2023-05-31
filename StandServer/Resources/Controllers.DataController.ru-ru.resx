@@ -34,4 +34,7 @@
         <value>Неверный формат sample_ids, доступные форматы: номера, разделённые запятой, "*", "active" (по умолчанию).</value>
         <comment>GetLastMeasurements.InvalidSampleId</comment>
     </data>
+    <data name="AddMeasurements.Duplicates" xml:space="preserve">
+        <value>Не может быть измерений с одинаковым номером образца и временем измерения. ({0:D8} {1:HH:mm:ss dd.MM.yyyy})</value>
+    </data>
 </root>

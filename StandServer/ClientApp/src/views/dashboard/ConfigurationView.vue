@@ -75,6 +75,12 @@ async function save() {
 		store.commit('updateConfiguration', patch);
 
 		configurationSaveError.value = '';
+
+		iziToast.success({
+			title: 'Настройки сохранены',
+			timeout: 2000,
+			layout: 2
+		});
 	} catch (err) {
 		configurationSaveError.value = errorToText(err);
 	}
@@ -88,7 +94,7 @@ async function loadMeasurements() {
 		rawMeasurements.value = '';
 		loadMeasurementsError.value = '';
 
-		iziToast.info({
+		iziToast.success({
 			title: 'Загрузка измерений завершена',
 			message: 'Перезагрузите страницу для того, чтобы увидеть изменения',
 			timeout: 5000,
