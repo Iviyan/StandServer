@@ -239,7 +239,7 @@ public class DataController : Controller
             $"{id:D8} [{from:dd.MM.yyyy HH.mm.ss} - {to:dd.MM.yyyy HH.mm.ss}].csv");
     }
 
-    Measurement? ParseRawMeasurement(string str)
+    public static Measurement? ParseRawMeasurement(string str)
     {
         //00000123 12:01 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W
         if (str.Length < 41) return null;

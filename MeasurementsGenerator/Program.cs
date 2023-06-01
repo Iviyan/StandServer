@@ -1,5 +1,7 @@
 ﻿//#define SERVER
 
+#define WRITEONLY
+
 using System.Net.Mime;
 using System.Text;
 
@@ -11,6 +13,11 @@ const string url = "http://localhost:5161/api/samples";
 
 const int samplesCount = 3;
 const int interval = 10; //seconds
+#if WRITEONLY
+DateTime time = DateTime.Now;
+const int measurementsCount = 1000;
+const string fileName = "measurements.txt";
+#endif
 
 HttpClient client = new();
 PeriodicTimer timer = new(TimeSpan.FromSeconds(interval));
@@ -20,30 +27,65 @@ CancellationToken ct = cts.Token;
 const int secondsFromStart = 0;
 
 Measurement[] samples = Enumerable.Range(1, samplesCount)
-    .Select(i => new Measurement { SampleId = 051523 + i, SecondsFromStart = secondsFromStart - interval})
+    .Select(i => new Measurement { SampleId = 001000 + i, SecondsFromStart = secondsFromStart - interval })
     .ToArray();
 
+void NextMeasurement()
+{
+    foreach (var sample in samples)
+    {
+        sample.Time = time;
+        sample.SecondsFromStart += interval;
+        int cycleTime = sample.Work * 60 + sample.Relax * 60;
+        sample.State = sample.SecondsFromStart % cycleTime <= sample.Work * 60 ? SampleState.Work : SampleState.Relax;
+        sample.T = (short)(sample.State == SampleState.Work
+            ? Random.Shared.Next(45, 50)
+            : Random.Shared.Next(20, 35));
+        sample.I = (short)(sample.State == SampleState.Work
+            ? Random.Shared.Next(7000, 8000)
+            : Random.Shared.Next(0, 10) != 0
+                ? Random.Shared.Next(8, 15)
+                : Random.Shared.Next(100, 8000));
+    }
+
+    time = time.AddSeconds(interval);
+}
+
+#if WRITEONLY
+StringBuilder sb = new();
+for (int i = 0; i < measurementsCount - 1; i++)
+{
+    NextMeasurement();
+
+    string measurements = String.Join('\n', samples.Select(GetMeasurementString));
+    sb.AppendLine(measurements);
+    Console.WriteLine(measurements);
+}
+
+{
+    foreach (var sample in samples)
+    {
+        sample.Time = time;
+        sample.State = SampleState.Off;
+        sample.T = (short)Random.Shared.Next(20, 35);
+        sample.I = (short)(Random.Shared.Next(0, 10) != 0
+            ? Random.Shared.Next(8, 15)
+            : Random.Shared.Next(100, 8000));
+    }
+
+    string measurements = String.Join('\n', samples.Select(GetMeasurementString));
+    sb.Append(measurements);
+    Console.WriteLine(measurements);
+}
+File.WriteAllText(fileName, sb.ToString());
+
+#else
 Console.CancelKeyPress += (_, _) => cts.Cancel();
 try
 {
     do
     {
-        DateTime now = DateTime.Now;
-        foreach (var sample in samples)
-        {
-            sample.Time = now;
-            sample.SecondsFromStart += interval;
-            int cycleTime = sample.Work * 60 + sample.Relax * 60;
-            sample.State = sample.SecondsFromStart % cycleTime <= sample.Work * 60 ? SampleState.Work : SampleState.Relax;
-            sample.T = (short)(sample.State == SampleState.Work
-                ? Random.Shared.Next(45, 50)
-                : Random.Shared.Next(20, 35));
-            sample.I = (short)(sample.State == SampleState.Work
-                ? Random.Shared.Next(7000, 8000)
-                : Random.Shared.Next(0, 10) != 0
-                    ? Random.Shared.Next(8, 15)
-                    : Random.Shared.Next(100, 8000));
-        }
+        NextMeasurement();
 
         string measurements = String.Join('\n', samples.Select(GetMeasurementString));
         var result = await client.PostAsync(url,
@@ -77,7 +119,7 @@ await Task.Delay(TimeSpan.FromSeconds(2));
     Console.WriteLine(measurements);
     Console.WriteLine($"> {result.StatusCode:D} - {await result.Content.ReadAsStringAsync()}");
 }
-
+#endif
 
 
 static string GetMeasurementString(Measurement m)
