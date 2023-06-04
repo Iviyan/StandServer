@@ -2,6 +2,8 @@
 
 namespace StandServer.Services;
 
+/// <summary> Methods for loading and saving the
+/// <see cref="ApplicationConfiguration">application configuration</see> in the database. </summary>
 public class DbStoredConfigurationService
 {
     private readonly ILogger<DbStoredConfigurationService> logger;
@@ -21,6 +23,7 @@ public class DbStoredConfigurationService
     private static readonly string[] PropertyNames;
 
     internal static bool PropertyPredicate(PropertyInfo p) => p.CanRead && p.CanWrite;
+
     static DbStoredConfigurationService()
     {
         Type type = typeof(ApplicationConfiguration);
@@ -28,6 +31,11 @@ public class DbStoredConfigurationService
         PropertyNames = Properties.Select(p => p.Name).ToArray();
     }
 
+    /// <summary>
+    /// Load all properties of <see cref="ApplicationConfiguration"/> from database. <br/>
+    /// Using the ([PropertyType] [PropertyName]FromString(string s)) method in <see cref="ApplicationConfiguration"/>,
+    /// it is possible to override the conversion of string to property type.
+    /// </summary>
     public async Task LoadAllAsync()
     {
         logger.LogInformation("Load app configuration start");
@@ -82,12 +90,20 @@ public class DbStoredConfigurationService
                 }
             }
         }
-        
+
         logger.LogInformation("Load app configuration end");
     }
 
+    /// <summary>
+    /// Save all properties of <see cref="ApplicationConfiguration"/> to database. <br/>
+    /// Using the (string [PropertyName]ToString([PropertyType] value)) method in <see cref="ApplicationConfiguration"/>,
+    /// it is possible to override the conversion of property type to string.
+    /// </summary>
     public Task SaveAsync() => SaveAsync(PropertyNames);
 
+    /// <inheritdoc cref="SaveAsync()"/>
+    /// <param name="propertyNames"></param>
+    /// <param name="ct"></param>
     public async Task SaveAsync(string[] propertyNames, CancellationToken ct = default)
     {
         var properties = Properties.Where(p => propertyNames.Contains(p.Name)).ToList();
@@ -96,7 +112,7 @@ public class DbStoredConfigurationService
         {
             object? value = property.GetValue(appConfiguration);
             string? sValue = null;
-            
+
             MethodInfo? convertMethod = ApplicationConfigurationType.GetMethod($"{property.Name}ToString", new[] { property.PropertyType });
 
             if (convertMethod != null)
@@ -106,16 +122,17 @@ public class DbStoredConfigurationService
                 else
                     sValue = convertMethod.Invoke(appConfiguration, new object?[] { value }) as string;
             }
-            
+
             sValue ??= property.GetValue(appConfiguration)?.ToString();
-            
+
             int r = await context.Database.ExecuteSqlInterpolatedAsync($"""
                 insert into configuration values ({property.Name},{sValue})
                 on conflict (key) do update set value = excluded.value;
                 """, cancellationToken: ct);
         }
     }
-    
+
+    /// <summary> Apply <paramref name="patch"/> changes to <see cref="ApplicationConfiguration"/> and save changes to database. </summary>
     public Task ApplyAndSaveAsync(ApplicationConfigurationPatch patch, CancellationToken ct = default)
     {
         patch.Apply(appConfiguration);

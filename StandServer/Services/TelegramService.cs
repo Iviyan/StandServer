@@ -11,21 +11,23 @@ using User = StandServer.Models.User;
 
 namespace StandServer.Services;
 
+/// <summary> Basic functionality of telegram service. </summary>
 public interface ITelegramService
 {
+    /// <summary> Is the telegram service available. (Is the configuration set) </summary>
     bool IsOk => BotClient is { };
+
+    /// <summary> TelegramBotClient instance. </summary>
     TelegramBotClient? BotClient { get; }
+
+    /// <summary> Send message to telegram chanel with state of <paramref name="measurements"/>. </summary>
     Task SendAlarm(params Measurement[] measurements);
-
-    Task ExecuteIfOk(Func<TelegramBotClient, Task> action)
-        => BotClient is { } ? action(BotClient) : Task.CompletedTask;
-
-    Task<T?> ExecuteIfOk<T>(Func<TelegramBotClient, Task<T?>> action)
-        => BotClient is { } ? action(BotClient) : Task.FromResult(default(T));
 }
 
+/// <summary> Extension methods for setting up telegram service in an <see cref="IServiceCollection" />. </summary>
 public static class TelegramServiceExtension
 {
+    /// <summary> Adds services required to work with telegram. </summary>
     public static IServiceCollection AddTelegramService(this IServiceCollection services)
     {
         services.AddSingleton<ITelegramService, TelegramService>();
@@ -34,7 +36,8 @@ public static class TelegramServiceExtension
     }
 }
 
-
+/// <summary> A background task that supports the functioning of the bot
+/// and provides functionality for sending notifications in a telegram. </summary>
 [SuppressMessage("ReSharper", "ConvertTypeCheckPatternToNullCheck")]
 public class TelegramService : BackgroundService, ITelegramService
 {
@@ -61,6 +64,8 @@ public class TelegramService : BackgroundService, ITelegramService
 
     private ApplicationContext context = null!;
 
+    /// <summary> Verifying telegram configuration, the validity of the token and start receiving telegram bot events. </summary>
+    /// <exception cref="ConfigurationException">An exception that is called if there are errors in the configuration file.</exception>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("TelegramService started");
@@ -112,6 +117,7 @@ public class TelegramService : BackgroundService, ITelegramService
         }
     }
 
+    /// <summary> Logging of pooling errors. </summary>
     private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
         CancellationToken cancellationToken)
     {
@@ -126,6 +132,7 @@ public class TelegramService : BackgroundService, ITelegramService
         return Task.CompletedTask;
     }
 
+    /// <summary> Calling the appropriate event handling method and handling exceptions. </summary>
     private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update,
         CancellationToken cancellationToken)
     {
@@ -133,7 +140,7 @@ public class TelegramService : BackgroundService, ITelegramService
         {
             switch (update)
             {
-                case { Message: Message message } when message.Chat.Type == ChatType.Private:
+                case { Message: Message { Chat.Type: ChatType.Private } message }:
                 {
                     try
                     {
@@ -156,6 +163,7 @@ public class TelegramService : BackgroundService, ITelegramService
         }
     }
 
+    /// <summary> Handling the message received by the bot </summary>
     private async Task HandleNewMessageAsync(Update update, Message message,
         CancellationToken cancellationToken)
     {
@@ -215,6 +223,7 @@ public class TelegramService : BackgroundService, ITelegramService
                 await ReplyByTextMessage("Неверный формат команды");
                 return;
             }
+
             var (login, password) = (arg![..spacePos], arg[(spacePos + 1)..]);
 
             User? currentUser = await GetUser();
@@ -297,8 +306,8 @@ public class TelegramService : BackgroundService, ITelegramService
             string samplesStateText = measurements.Length == 0
                 ? "Данные отсутствуют"
                 : measurements[0].Time.ToString(DateTimeFormat).Replace(".", @"\.") + "\n"
-                    + String.Join('\n', measurements.Select(m =>
-                        $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
+                                                                                    + String.Join('\n', measurements.Select(m =>
+                                                                                        $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
 
             await BotClient!.SendTextMessageAsync(message.Chat, samplesStateText,
                 parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
@@ -349,17 +358,19 @@ public class TelegramService : BackgroundService, ITelegramService
             parseMode: ParseMode.MarkdownV2);
     }
 
-    static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0')}" +
-                                              $":{(s % 3600 / 60 | 0).ToString().PadLeft(2, '0')}" +
-                                              $":{(s % 60).ToString().PadLeft(2, '0')}";
+    private static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0')}" +
+                                                      $":{(s % 3600 / 60 | 0).ToString().PadLeft(2, '0')}" +
+                                                      $":{(s % 60).ToString().PadLeft(2, '0')}";
 
-    static (string command, string? arg) ParseCommand(string s)
+    /// <summary> Splitting a line with a first space. </summary>
+    private static (string command, string? arg) ParseCommand(string s)
     {
         int spacePos = s.IndexOf(' ');
         if (spacePos == -1) return (s, null);
         return (s[..spacePos], s[(spacePos + 1)..]);
     }
 
+    /// <summary> Dispose base and IServiceScope. </summary>
     public override void Dispose()
     {
         base.Dispose();

@@ -8,7 +8,6 @@ global using Microsoft.IdentityModel.Tokens;
 global using Microsoft.AspNetCore.Authorization;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.Extensions.Options;
-global using Microsoft.AspNetCore.SpaServices;
 global using Microsoft.AspNetCore.SignalR;
 global using Microsoft.EntityFrameworkCore;
 global using System.Text.Json.Serialization;

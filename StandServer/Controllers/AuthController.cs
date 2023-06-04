@@ -3,9 +3,11 @@ using StandServer.Configuration;
 
 namespace StandServer.Controllers;
 
+/// <summary> A controller containing authorization-related actions. </summary>
 [ApiController]
 public class AuthController : ControllerBase
 {
+    /// <summary> Instance of <see cref="PasswordHasher"/>. </summary>
     public static readonly PasswordHasher<User> PasswordHasher = new();
 
     private readonly ILogger<AuthController> logger;
@@ -19,8 +21,16 @@ public class AuthController : ControllerBase
         this.authConfig = authConfig.Value;
     }
 
+    /// <summary> Creating a token by combining refresh token uid and device uid. </summary>
     static string CreateRefreshToken(Guid token, Guid deviceUid) => $"{token:N}{deviceUid:N}";
 
+    /// <summary> Get the refresh token uid and device uid from the merged string. </summary>
+    /// <param name="refreshToken">Refresh token string.</param>
+    /// <param name="token">When this method returns, contains the parsed value.
+    /// If the method returns true, result contains a valid Guid. If the method returns false, result equals Empty.</param>
+    /// <param name="deviceUid">When this method returns, contains the parsed value.
+    /// If the method returns true, result contains a valid Guid. If the method returns false, result equals Empty.</param>
+    /// <returns>True if the parse operation was successful; otherwise, false.</returns>
     static bool TryParseRefreshToken(string? refreshToken, out Guid token, out Guid deviceUid)
     {
         token = deviceUid = Guid.Empty;
@@ -30,6 +40,8 @@ public class AuthController : ControllerBase
         return true;
     }
 
+    /// <summary> The authorization method for obtaining access to the site resources. </summary>
+    /// <returns>If authorization is successful, a bundle of access and refresh tokens, if not, an error.</returns>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model,
         [FromServices] ApplicationContext context)
@@ -75,15 +87,20 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary> Getting the password hash. </summary>
+    /// <param name="password">Raw password.</param>
+    /// <returns>Password hash.</returns>
     public static string GetHashPassword(string password) => PasswordHasher.HashPassword(null!, password);
 
+    /// <summary> A method for obtaining a new bundle of access and refresh tokens. </summary>
+    /// <param name="rawRefreshToken">If not passed, the token is taken from the cookie.</param>
+    /// <returns>If updating token is successful, a bundle of access and refresh tokens, if not, an error.</returns>
     [HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshToken(
         [FromBody] string rawRefreshToken,
         [FromServices] ApplicationContext context)
     {
-        if (String.IsNullOrWhiteSpace(rawRefreshToken) 
-            && Request.Cookies.TryGetValue("RefreshToken", out string? sToken))
+        if (String.IsNullOrWhiteSpace(rawRefreshToken) && Request.Cookies.TryGetValue("RefreshToken", out string? sToken))
             rawRefreshToken = sToken;
         if (!TryParseRefreshToken(rawRefreshToken, out Guid token, out Guid deviceUid))
             return Problem(title: localizer["RefreshToken.MissingRefreshToken"], statusCode: StatusCodes.Status400BadRequest);
@@ -114,7 +131,7 @@ public class AuthController : ControllerBase
 
         Guid newRefreshTokenId = Guid.NewGuid();
         string fullRefreshToken = CreateRefreshToken(newRefreshTokenId, deviceUid);
-        
+
         RefreshToken newRefreshToken = new()
         {
             Id = newRefreshTokenId,
@@ -140,6 +157,7 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary> The method of logging out of the account, which removes the token from the database and from cookies. </summary>
     [HttpPost("logout"), Authorize]
     public async Task<IActionResult> Logout(
         [FromServices] ApplicationContext context,
@@ -151,9 +169,11 @@ public class AuthController : ControllerBase
 
         Response.Cookies.Delete("RefreshToken");
 
-        return NoContent();
+        return Ok();
     }
 
+    /// <summary> Generating a JWT access token. </summary>
+    /// <returns>JWT access token</returns>
     string CreateJwtToken(User user, Guid deviceUid)
     {
         var now = DateTime.UtcNow;
@@ -163,10 +183,10 @@ public class AuthController : ControllerBase
             notBefore: now,
             claims: new Claim[]
             {
-                new Claim(JwtRegisteredClaimNames.Name, user.Login),
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim("IsAdmin", user.IsAdmin.ToString()),
-                new Claim("DeviceUid", deviceUid.ToString("N"))
+                new(JwtRegisteredClaimNames.Name, user.Login),
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new("IsAdmin", user.IsAdmin.ToString()),
+                new("DeviceUid", deviceUid.ToString("N"))
             },
             expires: now.Add(TimeSpan.FromSeconds(authConfig.TokenTTL.Access)),
             signingCredentials: new SigningCredentials(authConfig.Jwt.SecretKey,
@@ -176,11 +196,13 @@ public class AuthController : ControllerBase
         return encodedJwt;
     }
 
+    /// <summary> The POST method available to the user to change the account password.
+    /// Cancels all sessions except the current one. </summary>
     [HttpPost("change-password"), Authorize]
     public async Task<IActionResult> ChangePassword(
         [FromServices] ApplicationContext context,
         [FromServices] RequestData requestData,
-        [FromBody] ChangePasswordRequest model)
+        [FromBody] ChangePasswordModel model)
     {
         string? currentPassword = await context.Users
             .Where(u => u.Id == requestData.UserId)
@@ -195,7 +217,7 @@ public class AuthController : ControllerBase
             return Problem(title: localizer["ChangePassword.InvalidOldPassword"], statusCode: StatusCodes.Status400BadRequest);
 
         await using var transaction = await context.Database.BeginTransactionAsync();
-        
+
         int c = await context.Users
             .Where(u => u.Id == requestData.UserId)
             .ExecuteUpdateAsync(p =>
@@ -207,6 +229,6 @@ public class AuthController : ControllerBase
 
         await transaction.CommitAsync();
 
-        return c > 0 ? NoContent() : NotFound();
+        return c > 0 ? Ok() : NotFound();
     }
 }

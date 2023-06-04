@@ -4,6 +4,7 @@ using Telegram.Bot.Exceptions;
 
 namespace StandServer.Controllers;
 
+/// <summary> A controller containing actions for managing users. </summary>
 [ApiController]
 public class UsersController : ControllerBase
 {
@@ -16,6 +17,7 @@ public class UsersController : ControllerBase
         this.localizer = localizer;
     }
 
+    /// <summary> An administrator-accessible POST method, which creates a new user. </summary>
     [HttpPost("users"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> AddUser(
         [FromBody] RegisterModel model,
@@ -41,6 +43,7 @@ public class UsersController : ControllerBase
         });
     }
 
+    /// <summary> An administrator-accessible GET method, which returns a list of all users. </summary>
     [HttpGet("users"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> GetUsers(
         [FromServices] ApplicationContext context)
@@ -59,10 +62,11 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary> An administrator-accessible PATCH method that edits the user with the given id. </summary>
     [HttpPatch("users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> EditUser(int id,
         [FromServices] ApplicationContext context,
-        [FromBody] EditUserRequest model)
+        [FromBody] EditUserModel model)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
@@ -90,9 +94,10 @@ public class UsersController : ControllerBase
             await context.RefreshTokens.Where(t => t.UserId == id).ExecuteDeleteAsync();
         }
 
-        return NoContent();
+        return Ok();
     }
 
+    /// <summary> An administrator-accessible DELETE method that removes the user with the given id. </summary>
     [HttpDelete("users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> DeleteUser(int id,
         [FromServices] ApplicationContext context,
@@ -115,7 +120,7 @@ public class UsersController : ControllerBase
 
         if (c <= 0) return NotFound();
         
-        if (!telegramService.IsOk) return NoContent();
+        if (!telegramService.IsOk) return Ok();
 
         foreach (var chunk in linkedTelegramAccounts.Chunk(30 - 1))
         {
@@ -128,10 +133,11 @@ public class UsersController : ControllerBase
             await Task.Delay(1000);
         }
 
-        return NoContent();
+        return Ok();
 
     }
 
+    /// <summary> An administrator-accessible DELETE method that removes the telegram bot user with the given id (not user id). </summary>
     [HttpDelete("telegram-users/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> LogoutTelegramBotUser(int id,
         [FromServices] ApplicationContext context,
@@ -140,7 +146,7 @@ public class UsersController : ControllerBase
         int c = await context.TelegramBotUsers.Where(u => u.TelegramUserId == id).ExecuteDeleteAsync();
 
         if (c <= 0) return NotFound();
-        if (!telegramService.IsOk) return NoContent();
+        if (!telegramService.IsOk) return Ok();
         
         try
         {
@@ -152,7 +158,7 @@ public class UsersController : ControllerBase
             logger.LogError(ex, "Error sending notification to telegram user about logout");
         }
 
-        return NoContent();
+        return Ok();
 
     }
 }

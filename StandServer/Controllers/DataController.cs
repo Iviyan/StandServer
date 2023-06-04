@@ -3,6 +3,7 @@ using StandServer.Services;
 
 namespace StandServer.Controllers;
 
+/// <summary> A controller containing actions for managing measurements data. </summary>
 [ApiController, Authorize]
 public class DataController : Controller
 {
@@ -15,12 +16,17 @@ public class DataController : Controller
         this.localizer = localizer;
     }
 
+    /// <summary> A user-accessible GET method for getting a list of all sample ids. </summary>
     [HttpGet("samples")]
     public IActionResult GetSamplesList([FromServices] CachedData data)
     {
         return Ok(data.SampleIds);
     }
 
+    /// <summary> A POST method for receiving the status of active samples or importing measurements. </summary>
+    /// <param name="raw">Measurements in text format.</param>
+    /// <param name="silent">If this parameter is set, the measurements are imported without sending notifications
+    /// and updating the data on the site in real time. Required for importing measurements.</param>
     [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
     public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
@@ -71,7 +77,7 @@ public class DataController : Controller
             await context.SaveChangesAsync();
             foreach (int sampleId in measurements.Select(m => m.SampleId).Distinct())
                 data.SampleIds.Add(sampleId);
-            return NoContent();
+            return Ok();
         }
 
         data.LastMeasurementTime = measurements.MaxBy(m => m.Time)!.Time;
@@ -98,9 +104,13 @@ public class DataController : Controller
 
         await standHub.Clients.All.NewMeasurements(measurements);
 
-        return NoContent();
+        return Ok();
     }
 
+    /// <summary> A user-accessible GET method for getting measurements for the specified period. </summary>
+    /// <param name="id">Sample id</param>
+    /// <param name="from">IIf not set, then unlimited.</param>
+    /// <param name="to">If not set, then unlimited.</param>
     [HttpGet("samples/{id:int}")]
     public async Task<IActionResult> GetMeasurements(int id,
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
@@ -119,6 +129,8 @@ public class DataController : Controller
         return Ok(measurements);
     }
 
+    /// <summary> An admin-accessible DELETE method that removes sample with all its measurements. </summary>
+    /// <param name="id">Sample id</param>
     [HttpDelete("samples/{id:int}"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> DeleteSampleMeasurements(int id,
         [FromServices] ApplicationContext context,
@@ -132,9 +144,12 @@ public class DataController : Controller
 
         await context.Database.ExecuteSqlRawAsync("VACUUM ANALYZE measurements");
 
-        return delCount > 0 ? NoContent() : BadRequest();
+        return delCount > 0 ? Ok() : BadRequest();
     }
 
+    /// <summary> A user-accessible GET method for getting a list of last sample measurements. </summary>
+    /// <param name="sampleIdsRaw">Either "active" or "*", or comma-separated sample numbers.</param>
+    /// <param name="count">The number of recent measurements of each sample.</param>
     [HttpGet("samples/last")]
     public async Task<IActionResult> GetLastMeasurements(
         [FromServices] DatabaseContext context,
@@ -189,12 +204,15 @@ public class DataController : Controller
             .ToDictionary(g => g.Key, g => g.AsEnumerable()));
     }
 
+    /// <summary> A model for obtaining and displaying the measurement period of a sample. </summary>
     class SamplePeriod
     {
         public DateTime From { get; set; }
         public DateTime To { get; set; }
     }
 
+    /// <summary> A user-accessible GET method for getting the measurement period of the sample. </summary>
+    /// <param name="id">Sample id</param>
     [HttpGet("samples/{id:int}/period")]
     public async Task<IActionResult> GetSamplePeriod(int id,
         [FromServices] DatabaseContext context, [FromServices] CachedData data)
@@ -209,6 +227,10 @@ public class DataController : Controller
         return Ok(period);
     }
 
+    /// <summary> A user-accessible GET method to download sample measurements for a given period in csv format. </summary>
+    /// <param name="id">Sample id</param>
+    /// <param name="from">IIf not set, then unlimited.</param>
+    /// <param name="to">If not set, then unlimited.</param>
     [HttpGet("samples/{id:int}/csv")]
     public async Task<IActionResult> GetMeasurementsCsv(int id,
         [FromServices] ApplicationContext context, [FromServices] CachedData data,
@@ -239,6 +261,9 @@ public class DataController : Controller
             $"{id:D8} [{from:dd.MM.yyyy HH.mm.ss} - {to:dd.MM.yyyy HH.mm.ss}].csv");
     }
 
+    /// <summary> Parse measurement from text format to <see cref="Measurement"/> class. </summary>
+    /// <param name="str">One measurement in text format</param>
+    /// <returns><see cref="Measurement"/> on success, otherwise null.</returns>
     public static Measurement? ParseRawMeasurement(string str)
     {
         //00000123 12:01 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W
@@ -305,19 +330,6 @@ public class DataController : Controller
         if (stateRaw.SequenceEqual("W")) state = SampleState.Work;
         if (stateRaw.SequenceEqual("R")) state = SampleState.Relax;
         if (state is null) return null;
-
-        /*Console.WriteLine($"Number: {sampleId}");
-        Console.WriteLine($"DateTime: {dateTime}");
-        Console.WriteLine($"Seconds from start: {secondsFromStart}");
-        Console.WriteLine($"DutyCycle (%): {dutyCycle}");
-        Console.WriteLine($"t (*C): {t}");
-        Console.WriteLine($"tu (*C): {tu}");
-        Console.WriteLine($"I (mA): {i}");
-        Console.WriteLine($"Period (us): {period}");
-        Console.WriteLine($"Work (min): {work}");
-        Console.WriteLine($"Relax (min): {relax}");
-        Console.WriteLine($"Frequency (GHz): {frequency}");
-        Console.WriteLine($"Status: {state}");*/
 
         Measurement measurement = new()
         {

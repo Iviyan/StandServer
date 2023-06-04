@@ -1,5 +1,6 @@
 ﻿namespace StandServer.Configuration;
 
+/// <summary> The exception that is thrown when a configuration error occurs. </summary>
 [Serializable]
 public class ConfigurationException : Exception
 {

@@ -1,5 +1,6 @@
 ﻿namespace StandServer.Services;
 
+/// <summary> Loading frequently used data into the <see cref="CachedData">cache</see> </summary>
 public class LoadCacheService
 {
     private readonly IServiceProvider serviceProvider;
@@ -13,6 +14,7 @@ public class LoadCacheService
         this.logger = logger;
     }
 
+    /// <inheritdoc cref="LoadCacheService"/>
     public async Task LoadAsync(CancellationToken stoppingToken = default)
     {
         logger.LogInformation($"Load cache start...");
@@ -22,7 +24,7 @@ public class LoadCacheService
         await using var con = efContext.Database.GetDbConnection();
 
         cachedData.SampleIds = new(
-            await con.QueryAsync<int>(new  CommandDefinition(
+            await con.QueryAsync<int>(new CommandDefinition(
                 @"select * from get_unique_sample_ids()", cancellationToken: stoppingToken)));
 
         logger.LogInformation($"> Sample ids loaded");
@@ -30,7 +32,7 @@ public class LoadCacheService
         cachedData.LastMeasurementTime = await efContext.Measurements.AsNoTracking()
             .OrderByDescending(e => e.Time)
             .Take(1).Select(m => (DateTime?)m.Time).SingleOrDefaultAsync(stoppingToken);
-        
+
         logger.LogInformation($"> Last measurement time loaded");
 
         logger.LogInformation($"Load cache end...");
