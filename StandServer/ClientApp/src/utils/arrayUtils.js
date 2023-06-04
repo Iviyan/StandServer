@@ -1,7 +1,7 @@
 ﻿export class ReverseIterable {
 	constructor(arr) { this.arr = arr; }
 
-	*[Symbol.iterator]() {
+	* [Symbol.iterator]() {
 		const arr = this.arr;
 		for (let i = arr.length - 1; i >= 0; i--) yield arr[i];
 	}
@@ -11,8 +11,20 @@
 	}
 }
 
+/**
+ * Get reverse iterator for array
+ * @param {*[]} arr
+ * @param {boolean} b If false, the function does nothing.
+ * @returns {ReverseIterable|*}
+ */
 export const reverseIterate = (arr, b = true) => b === true ? new ReverseIterable(arr) : arr;
 
+/**
+ * Check arrays equality
+ * @param {*[]} a
+ * @param {*[]} b
+ * @returns {boolean}
+ */
 export function arraysEqual(a, b) {
 	if (a === b) return true;
 	if (a == null || b == null) return false;
@@ -24,6 +36,12 @@ export function arraysEqual(a, b) {
 	return true;
 }
 
+/**
+ * Get the elements present in A and which are not in B.
+ * @param {*[]} setA
+ * @param {*[]} setB
+ * @returns {any[]}
+ */
 export function difference(setA, setB) {
 	const _difference = new Set(setA);
 	for (const elem of setB)

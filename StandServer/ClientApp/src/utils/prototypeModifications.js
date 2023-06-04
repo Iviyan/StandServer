@@ -1,14 +1,30 @@
 ﻿// arrayUtils
 
-Array.prototype.minBy = function(fn) {
+/**
+ * Get min value by selector function
+ * @param {function} fn
+ * @returns {*}
+ */
+Array.prototype.minBy = function (fn) {
 	return this.extremumBy(fn, Math.min);
 };
 
-Array.prototype.maxBy = function(fn) {
+/**
+ * Get max value by selector function
+ * @param {function} fn
+ * @returns {*}
+ */
+Array.prototype.maxBy = function (fn) {
 	return this.extremumBy(fn, Math.max);
 };
 
-Array.prototype.extremumBy = function(pluck, extremum) {
+/**
+ * Get value by selector and condition functions
+ * @param {function} pluck selector function
+ * @param {function} extremum condition function
+ * @returns {*}
+ */
+Array.prototype.extremumBy = function (pluck, extremum) {
 	return this.reduce((best, next) => {
 		let pair = [ pluck(next), next ];
 		if (!best)
@@ -17,11 +33,16 @@ Array.prototype.extremumBy = function(pluck, extremum) {
 			return best;
 		else
 			return pair;
-	},null)[1];
+	}, null)[1];
 }
 
 // timeUtils
 
+/**
+ * Add days to date
+ * @param {Date} days
+ * @returns {Date}
+ */
 Date.prototype.addDays = function (days) {
 	let date = new Date(this.valueOf());
 	date.setDate(date.getDate() + days);

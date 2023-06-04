@@ -1,5 +1,5 @@
 import { RequestError } from '@/exceptions';
-import {Mutex} from 'async-mutex';
+import { Mutex } from 'async-mutex';
 import store from '../store'
 import { trim } from './stringUtils';
 import { isEmpty } from './utils'
@@ -80,6 +80,14 @@ let methods = {
 // To avoid multiple refresh-token calls.
 const refreshTokenMutex = new Mutex();
 
+/**
+ * Call the API method and return the parsed JSON
+ * @param {string} url
+ * @param {string} method GET | POST | DELETE | PATCH
+ * @param {object|string} data
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
 export async function call(url = '', method = 'GET', data = {}) {
 	if (store.getters.jwtData.exp < Date.now() / 1000 && !refreshTokenMutex.isLocked()) {
 		let res = await refreshToken();
@@ -114,27 +122,66 @@ export async function call(url = '', method = 'GET', data = {}) {
 	return text.length > 0 ? JSON.parse(text) : text;
 }
 
-export async function callGet(url = '', data = {}) { return await call(url, 'get', data); }
-export async function callPost(url = '', data = {}) { return await call(url, 'post', data); }
-export async function callDelete(url = '', data = {}) { return await call(url, 'delete', data); }
-export async function callPatch(url = '', data = {}) { return await call(url, 'patch', data); }
+/**
+ * Call the API GET method and return the parsed JSON
+ * @param {string} url
+ * @param {object|string} data
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
+export const callGet = (url = '', data = {}) => call(url, 'get', data);
+
+/**
+ * Call the API POST method and return the parsed JSON
+ * @param {string} url
+ * @param {object|string} data
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
+export const callPost = (url = '', data = {}) => call(url, 'post', data);
+
+/**
+ * Call the API DELETE method and return the parsed JSON
+ * @param {string} url
+ * @param {object|string} data
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
+export const callDelete = (url = '', data = {}) => call(url, 'delete', data);
+
+/**
+ * Call the API PATCH method and return the parsed JSON
+ * @param {string} url
+ * @param {object|string} data
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
+export const callPatch = (url = '', data = {}) => call(url, 'patch', data);
 
 function extractFilename(contentDisposition, defaultFilename) {
 	if (!contentDisposition) return defaultFilename;
 
-	contentDisposition = contentDisposition.split(';').map(s=>s.trim().split('='));
-	let filenameUtf8 = contentDisposition.find(e=>e[0] === "filename*");
+	contentDisposition = contentDisposition.split(';').map(s => s.trim().split('='));
+	let filenameUtf8 = contentDisposition.find(e => e[0] === "filename*");
 	if (filenameUtf8) {
 		filenameUtf8 = trim(filenameUtf8[1], '"');
 		return decodeURI(filenameUtf8.startsWith("UTF-8''") ? filenameUtf8.substring(7) : filenameUtf8);
 	}
-	let filename = contentDisposition.find(e=>e[0] === "filename");
+	let filename = contentDisposition.find(e => e[0] === "filename");
 	if (filename) {
 		return trim(filename[1], '"');
 	}
 	return defaultFilename;
 }
 
+/**
+ * Call the API GET method and download received file
+ * @param {string} url
+ * @param {object|string} data
+ * @param {string|null} defaultFileName [null]
+ * @returns {Promise<object>}
+ * @throws {RequestError}
+ */
 export async function downloadFile(url, data = {}, defaultFileName = null) {
 	if (store.getters.jwtData.exp < Date.now() / 1000 && !refreshTokenMutex.isLocked()) {
 		let res = await refreshToken();
@@ -142,10 +189,10 @@ export async function downloadFile(url, data = {}, defaultFileName = null) {
 	}
 	await refreshTokenMutex.waitForUnlock();
 
-	const fetchFile = () =>  fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
+	const fetchFile = () => fetch(url + (isEmpty(data) ? '' : '?' + new URLSearchParams(data)), {
 		method: 'GET',
 		headers: {
-			'Authorization': `Bearer ${store.state.auth.jwt}`,
+			'Authorization': `Bearer ${ store.state.auth.jwt }`,
 		}
 	});
 	let response = await fetchFile();
