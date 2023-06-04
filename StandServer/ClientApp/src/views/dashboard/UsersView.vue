@@ -86,7 +86,7 @@ async function addUser() {
 		users.value.push(createdUser);
 		newUser.error = '';
 	} catch (err) {
-			newUser.error = errorToText(err);
+		newUser.error = errorToText(err);
 	}
 }
 

@@ -5,7 +5,9 @@
 					 overlay-transition="vfm-fade">
 		<div class="modal--header">
 			<span class="modal-title">Пользователь {{ user.login }}</span>
-			<button class="modal-close" @click="emit('cancel')"><mdi-close /></button>
+			<button class="modal-close" @click="emit('cancel')">
+				<mdi-close />
+			</button>
 		</div>
 		<div class="modal--content">
 			<div class="s-form">
@@ -50,7 +52,7 @@ import { ref, watch } from "vue";
 import { VueFinalModal } from 'vue-final-modal'
 import MdiClose from "@/components/MdiClose.vue";
 
-const emit = defineEmits(['edit', "delete", 'logoutTelegramBotUser', 'cancel'])
+const emit = defineEmits([ 'edit', "delete", 'logoutTelegramBotUser', 'cancel' ])
 const props = defineProps({
 	user: Object,
 	inProgress: { type: Boolean, default: false },

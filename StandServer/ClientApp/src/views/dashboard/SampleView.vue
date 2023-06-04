@@ -8,7 +8,8 @@
 			<button class="load-csv-btn" @click="loadCsv">Скачать (csv)</button>
 			<button class="del-sample-btn"
 					v-if="store.getters.isAdmin"
-					@click="deleteSampleVfmModal.open()">Удалить образец</button>
+					@click="deleteSampleVfmModal.open()">Удалить образец
+			</button>
 		</div>
 
 		<label class="cb mt-8" style="display: block;">
@@ -55,7 +56,8 @@
 					<th class="hide-900">Частота, GHz</th>
 					<th style="overflow-wrap: anywhere;">Состояние</th>
 				</tr>
-				<tr v-for="measurement in reverseIterate(data, showLastRecordsFirst)" :class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
+				<tr v-for="measurement in reverseIterate(data, showLastRecordsFirst)"
+					:class="[measurement.state, { alarm: !isSampleOk(measurement) }]">
 					<template v-if="measurement.state !== 'off' || showOffStateRecords || !isSampleOk(measurement)">
 						<td>{{ millisToDateTime(measurement.time) }}</td>
 						<td>{{ secondsToInterval(measurement.secondsFromStart) }}</td>

@@ -88,6 +88,7 @@ function pointBackgroundOrBorderColor(ctx, value) {
 	if (ctx.raw.state === 'relax') color = '#00b30082';
 	return color;
 }
+
 function segmentBorderColor(ctx, value) {
 	let color = 'rgb(255, 99, 132)';
 	if (ctx.p0.raw.state === 'off') color = '#00000082';

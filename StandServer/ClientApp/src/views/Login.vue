@@ -47,8 +47,7 @@ async function tryLogin() {
 		await store.dispatch('login', { login: login.value, password: password.value });
 		error.value = '';
 		await router.push("/");
-	}
-	catch (err) {
+	} catch (err) {
 		error.value = errorToText(err);
 	}
 }

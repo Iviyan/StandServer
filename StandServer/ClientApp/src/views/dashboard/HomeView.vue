@@ -21,15 +21,14 @@
 				<p class="work-time" style="grid-row: span 1;">Время работы: {{ secondsToInterval(measurement.secondsFromStart) }}</p>
 				<p class="i">I: {{ measurement.i }}</p>
 
-				<p v-if="!isSampleOk(measurement)"
-				   class="alarm-msg">Высокий ток в выключенном состоянии</p>
+				<p v-if="!isSampleOk(measurement)" class="alarm-msg">Высокий ток в выключенном состоянии</p>
 			</div>
 		</div>
 
 		<div class="sample-preview" v-if="monitorSampleId > 0">
 			<Pass :measurements="lastMeasurements[monitorSampleId]" v-slot="{ measurements }">
 				<div class="header">
-					<h3 >{{ sampleIdFormat(monitorSampleId) }}</h3>
+					<h3>{{ sampleIdFormat(monitorSampleId) }}</h3>
 					<p>{{ measurements.at(-1).t }} | {{ measurements.at(-1).i }}</p>
 				</div>
 				<div class="charts">
@@ -91,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref} from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useStore } from 'vuex'
 
 import MeasurementsChart from '@/components/MeasurementsRealtimeChart'
@@ -143,6 +142,7 @@ onMounted(async () => {
 	text-align: center;
 	flex: 1;
 }
+
 .summary > .header > p {
 	margin: 0;
 	flex: 1;
@@ -193,14 +193,14 @@ onMounted(async () => {
 	margin: 0;
 	justify-self: flex-start;
 	align-self: start;
-	background-color: rgba(0,0,0,.02);
+	background-color: rgba(0, 0, 0, .02);
 	/* TODO: Fit block width to content when text wraps. (It seems impossible) */
 }
 
 .summary > .sample-info > .open-link:hover {
 	border-color: #777;
 	color: #000;
-	background-color: rgba(0,0,0,.07);
+	background-color: rgba(0, 0, 0, .07);
 }
 
 .summary > .sample-info > .alarm-msg {

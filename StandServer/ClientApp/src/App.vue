@@ -94,12 +94,14 @@ button, input, optgroup, select, textarea {
 	display: flex;
 	align-items: center;
 }
+
 .modal-title {
 	margin: 0 32px 0 0;
 	font-size: 1.5rem;
 	font-weight: 600;
 	flex-grow: 1;
- }
+}
+
 .modal-close {
 	border: none;
 	background-color: transparent;
@@ -122,7 +124,7 @@ button, input, optgroup, select, textarea {
 	justify-content: center;
 	align-items: center;
 	flex-shrink: 0;
-	padding:8px 0 0;
+	padding: 8px 0 0;
 }
 
 .modal--action > button {
