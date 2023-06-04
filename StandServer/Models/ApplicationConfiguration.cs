@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using StandServer.Services;
 
 namespace StandServer.Models;
 
@@ -49,7 +48,7 @@ public class ApplicationConfigurationPatch : PatchDtoBase, IApplicationConfigura
         var targetType = typeof(ApplicationConfiguration);
         var patchType = typeof(ApplicationConfigurationPatch);
 
-        TargetProperties = targetType.GetProperties().Where(DbStoredConfigurationService.PropertyPredicate).ToArray();
-        PatchProperties = patchType.GetProperties().Where(DbStoredConfigurationService.PropertyPredicate).ToArray();
+        TargetProperties = targetType.GetProperties().Where(DbStoredConfiguration.PropertyPredicate).ToArray();
+        PatchProperties = patchType.GetProperties().Where(DbStoredConfiguration.PropertyPredicate).ToArray();
     }
 }

@@ -1,16 +1,16 @@
 ﻿using System.Reflection;
 
-namespace StandServer.Services;
+namespace StandServer.Utils;
 
 /// <summary> Methods for loading and saving the
 /// <see cref="ApplicationConfiguration">application configuration</see> in the database. </summary>
-public class DbStoredConfigurationService
+public class DbStoredConfiguration
 {
-    private readonly ILogger<DbStoredConfigurationService> logger;
+    private readonly ILogger<DbStoredConfiguration> logger;
     private readonly ApplicationContext context;
     private readonly ApplicationConfiguration appConfiguration;
 
-    public DbStoredConfigurationService(ILogger<DbStoredConfigurationService> logger, ApplicationContext context,
+    public DbStoredConfiguration(ILogger<DbStoredConfiguration> logger, ApplicationContext context,
         ApplicationConfiguration appConfiguration)
     {
         this.logger = logger;
@@ -24,7 +24,7 @@ public class DbStoredConfigurationService
 
     internal static bool PropertyPredicate(PropertyInfo p) => p.CanRead && p.CanWrite;
 
-    static DbStoredConfigurationService()
+    static DbStoredConfiguration()
     {
         Type type = typeof(ApplicationConfiguration);
         Properties = type.GetProperties().Where(PropertyPredicate).ToArray();
@@ -125,7 +125,7 @@ public class DbStoredConfigurationService
 
             sValue ??= property.GetValue(appConfiguration)?.ToString();
 
-            int r = await context.Database.ExecuteSqlInterpolatedAsync($"""
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
                 insert into configuration values ({property.Name},{sValue})
                 on conflict (key) do update set value = excluded.value;
                 """, cancellationToken: ct);

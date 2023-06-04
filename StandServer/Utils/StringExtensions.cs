@@ -1,7 +1,7 @@
 ﻿namespace StandServer.Utils;
 
 /// <summary> Extension methods for string. </summary>
-public static class StringUtils
+public static class StringExtensions
 {
     /// <summary> An effective string splitting method using yield. </summary>
     public static IEnumerable<string> GetLines(this string str, bool removeEmptyLines = false)

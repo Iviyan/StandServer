@@ -1,20 +1,20 @@
-﻿namespace StandServer.Services;
+﻿namespace StandServer.Utils;
 
 /// <summary> Loading frequently used data into the <see cref="CachedData">cache</see> </summary>
-public class LoadCacheService
+public class CacheLoader
 {
     private readonly IServiceProvider serviceProvider;
     private readonly CachedData cachedData;
-    private readonly ILogger<LoadCacheService> logger;
+    private readonly ILogger<CacheLoader> logger;
 
-    public LoadCacheService(IServiceProvider serviceProvider, CachedData cachedData, ILogger<LoadCacheService> logger)
+    public CacheLoader(IServiceProvider serviceProvider, CachedData cachedData, ILogger<CacheLoader> logger)
     {
         this.serviceProvider = serviceProvider;
         this.cachedData = cachedData;
         this.logger = logger;
     }
 
-    /// <inheritdoc cref="LoadCacheService"/>
+    /// <inheritdoc cref="CacheLoader"/>
     public async Task LoadAsync(CancellationToken stoppingToken = default)
     {
         logger.LogInformation($"Load cache start...");

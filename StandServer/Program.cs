@@ -154,13 +154,13 @@ services.AddAuthorization(options =>
 });
 
 services.AddSingleton<CachedData>(); // Some frequently used data
-services.AddTransient<LoadCacheService>(); // A service that load data once when the application starts
+services.AddTransient<CacheLoader>(); // A service that load data once when the application starts
 
 // Configuration based on DB table
 services.AddSingleton<ApplicationConfiguration>();
 services.AddSingleton<IApplicationConfiguration, ApplicationConfiguration>(
     sp => sp.GetRequiredService<ApplicationConfiguration>());
-services.AddScoped<DbStoredConfigurationService>();
+services.AddScoped<DbStoredConfiguration>();
 
 services.AddScoped<RequestData>(); // Information about the user who made the request
 
@@ -199,11 +199,11 @@ using (var scope = app.Services.CreateScope())
     }
     
     // Loading cache data
-    var loadCacheService = scope.ServiceProvider.GetRequiredService<LoadCacheService>(); 
+    var loadCacheService = scope.ServiceProvider.GetRequiredService<CacheLoader>(); 
     await loadCacheService.LoadAsync();
      
     // Load app configuration
-    var dbStoredConfiguration = scope.ServiceProvider.GetRequiredService<DbStoredConfigurationService>(); 
+    var dbStoredConfiguration = scope.ServiceProvider.GetRequiredService<DbStoredConfiguration>(); 
     await dbStoredConfiguration.LoadAllAsync();
 }
 

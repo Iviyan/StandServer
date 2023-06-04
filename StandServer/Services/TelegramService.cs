@@ -140,7 +140,7 @@ public class TelegramService : BackgroundService, ITelegramService
         {
             switch (update)
             {
-                case { Message: Message { Chat.Type: ChatType.Private } message }:
+                case { Message: { Chat.Type: ChatType.Private } message }:
                 {
                     try
                     {

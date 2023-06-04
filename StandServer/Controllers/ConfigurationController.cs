@@ -1,6 +1,4 @@
-﻿using StandServer.Services;
-
-namespace StandServer.Controllers;
+﻿namespace StandServer.Controllers;
 
 /// <summary> A controller containing actions for managing <see cref="ApplicationConfiguration"/>. </summary>
 [ApiController]
@@ -20,10 +18,10 @@ public class ConfigurationController : ControllerBase
     [HttpPatch("configuration"), Authorize(AuthPolicy.Admin)]
     public async Task<IActionResult> EditConfiguration(
         [FromBody] ApplicationConfigurationPatch patch,
-        [FromServices] DbStoredConfigurationService dbStoredConfigurationService,
+        [FromServices] DbStoredConfiguration dbStoredConfiguration,
         [FromServices] IApplicationConfiguration appConfiguration)
     {
-        await dbStoredConfigurationService.ApplyAndSaveAsync(patch);
+        await dbStoredConfiguration.ApplyAndSaveAsync(patch);
         return Ok(appConfiguration);
     }
 }
