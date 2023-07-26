@@ -38,7 +38,7 @@
 					<p class="show-900">Период, us: {{ measurement.period }}</p>
 					<p class="show-1000">Работа, min: {{ measurement.work }}</p>
 					<p class="show-1000">Отдых, min: {{ measurement.relax }}</p>
-					<p class="show-900">Частота, GHz: {{ measurement.frequency }}</p>
+					<p class="show-900">Частота, GHz: {{ measurement.frequency / 1000 }}</p>
 				</fieldset>
 			</Pass>
 
@@ -68,7 +68,7 @@
 						<td class="hide-900">{{ measurement.period }}</td>
 						<td class="hide-1000">{{ measurement.work }}</td>
 						<td class="hide-1000">{{ measurement.relax }}</td>
-						<td class="hide-900">{{ measurement.frequency }}</td>
+						<td class="hide-900">{{ measurement.frequency / 1000 }}</td>
 						<td>{{ measurement.state.toUpperCase() }}</td>
 					</template>
 				</tr>

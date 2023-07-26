@@ -227,7 +227,7 @@ const changePasswordVfmModal = useModal({
 	attrs: {
 		async onSubmit({ oldPassword, newPassword }) {
 			try {
-				await callPost('/change-password', { oldPassword, newPassword });
+				await callPost('/api/change-password', { oldPassword, newPassword });
 
 				changePasswordVfmModal.options.attrs.error = '';
 				await changePasswordVfmModal.close()
@@ -259,11 +259,22 @@ main {
 /* --- sidebar --- */
 
 .scrollbar {
-	height: 90%;
+	height: 100%;
 	width: 100%;
 	overflow-y: scroll;
 	overflow-x: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.scrollbar > .stand-status {
 	margin-top: 20px;
+}
+
+.scrollbar > ul {
+	flex-grow: 1;
+	padding-bottom: 20px;
+	background-color: #ededed;
 }
 
 /* Scrollbar Style */

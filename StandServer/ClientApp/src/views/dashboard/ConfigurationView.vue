@@ -16,7 +16,7 @@
 	<p class="error-message" v-if="configurationSaveError">{{ configurationSaveError }}</p>
 
 
-	<h3>Загрузка измерений</h3>
+	<h3 v-if="isAdmin">Загрузка измерений</h3>
 	<form class="configuration-form" @submit.prevent="loadMeasurements" v-if="isAdmin">
 
 		<textarea v-model="rawMeasurements"
