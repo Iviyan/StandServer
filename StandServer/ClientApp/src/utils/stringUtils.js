@@ -23,6 +23,6 @@ export function trim(str, ch) {
  * @returns {string}
  */
 export const sampleIdFormat = (id) =>
-	id > 0
+	id >= 0
 		? String(id).padStart(8, '0')
 		: '-' + String(-id).padStart(8, '0');

@@ -25,7 +25,7 @@
 			</div>
 		</div>
 
-		<div class="sample-preview" v-if="monitorSampleId > 0">
+		<div class="sample-preview" v-if="monitorSampleId !== null">
 			<Pass :measurements="lastMeasurements[monitorSampleId]" v-slot="{ measurements }">
 				<div class="header">
 					<h3>{{ sampleIdFormat(monitorSampleId) }}</h3>
@@ -116,11 +116,11 @@ const isSamplesOk = computed(() => {
 
 const loaded = computed(() => store.state.dashboard.lastMeasurementsInitialized);
 
-const monitorSampleId = ref(0);
+const monitorSampleId = ref(null);
 
 function sampleClick(sampleId) {
 	if (document.getSelection().isCollapsed)
-		monitorSampleId.value = monitorSampleId.value === sampleId ? 0 : sampleId;
+		monitorSampleId.value = monitorSampleId.value === sampleId ? null : sampleId;
 }
 
 onMounted(async () => {
