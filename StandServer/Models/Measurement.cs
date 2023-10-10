@@ -9,6 +9,9 @@ public enum SampleState { Off, Work, Relax }
 [Table("measurements") /*, Keyless*/]
 public class Measurement : IIndependentMeasurement
 {
+    /// <summary> Stand id </summary>
+    [Column("stand_id")] public short StandId { get; set; }
+    
     /// <summary> Sample id </summary>
     [Column("sample_id")] public int SampleId { get; set; }
 
@@ -89,7 +92,6 @@ public sealed class MeasurementMap : ClassMap<Measurement>
     {
         AutoMap(CultureInfo.InvariantCulture);
         Map(m => m.SampleId).Convert(m => $"{m.Value.SampleId:D8}");
-        Map(m => m.Time).Convert(m =>
-            m.Value.Time.ToLocalTime().ToString(CultureInfo.CurrentCulture));
+        Map(m => m.Time).Convert(m => m.Value.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
     }
 }

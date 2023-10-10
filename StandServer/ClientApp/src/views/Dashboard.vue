@@ -3,13 +3,19 @@
 
 		<div class="scrollbar">
 			<p class="stand-status">
-				<span v-if="lastMeasurementTime">Последнее измерение: {{ millisToDateTime(lastMeasurementTime) }}</span>
+				<template v-if="isNotEmpty(lastMeasurementTime)">
+					<span>Стенды</span>
+					<span v-for="(datetime, standId) in lastMeasurementTime">{{ standId }} -
+						{{ millisToDateTime(datetime) }}</span>
+				</template>
 				<span v-else>Измерений нет</span>
 			</p>
 			<ul>
-				<li class="dark" :class="{active: router.currentRoute.value.name === 'home'}">
-					<router-link :to="{ name: 'home' }">
-						<span class="nav-text">Главная</span>
+				<!--suppress EqualityComparisonWithCoercionJS -->
+				<li class="dark" v-for="standId in standIds"
+					:class="{active: router.currentRoute.value.name === 'stand' && router.currentRoute.value.params.id == standId}">
+					<router-link :to="{ name: 'stand', params: { id: standId }}">
+						<span class="nav-text">Стенд {{ standId }}</span>
 					</router-link>
 				</li>
 
@@ -63,18 +69,16 @@ import ChangePasswordModal from "@/components/ChangePasswordModal.vue";
 import { callPost } from '@/utils/api';
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { millisToDateTime } from "@/utils/timeUtils";
-import { errorToText } from "@/utils/utils";
+import { errorToText, isNotEmpty } from "@/utils/utils";
 
 const store = useStore();
 const router = useRouter();
 
 const isDashboardReady = ref(false);
-const standState = reactive({
-	lastMeasurementTime: null
-});
 
 const sampleIds = computed(() => store.state.dashboard.sampleIds);
-const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime ?? standState.lastMeasurementTime);
+const standIds = computed(() => store.getters.standIds);
+const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime);
 
 // SignalR
 let signalRConnectionRef = shallowRef(null);
@@ -171,9 +175,7 @@ onMounted(async () => {
 		});
 	});
 
-	signalRConnection.on("ActiveInfo", (lastMeasurementTime) => {
-		[ standState.lastMeasurementTime ] = [ lastMeasurementTime ]
-	});
+	signalRConnection.on("ActiveInfo", () => {	});
 
 	signalRConnection.on("Msg", data => console.log(data));
 
@@ -205,7 +207,6 @@ onMounted(async () => {
 
 onUnmounted(async () => {
 	signalRManuallyDisconnect = true;
-	store.commit("setHomeViewVisited", false);
 	store.commit("setLastMeasurementsInitialized", false);
 
 	if (signalRStartTimeout) clearTimeout(signalRStartTimeout);
@@ -267,10 +268,6 @@ main {
 	flex-direction: column;
 }
 
-.scrollbar > .stand-status {
-	margin-top: 20px;
-}
-
 .scrollbar > ul {
 	flex-grow: 1;
 	padding-bottom: 20px;
@@ -299,7 +296,7 @@ main {
 /* stand status */
 
 .stand-status {
-	margin: 0 8px 12px;
+	margin: 8px 6px 12px;
 	border: 1px solid #aaa;
 	border-radius: 8px;
 	text-align: center;

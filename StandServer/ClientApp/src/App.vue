@@ -203,13 +203,13 @@ button, input, optgroup, select, textarea {
 
 /* utils */
 
-.ms-6 { margin-left: 6px; }
+.ms-6 { margin-left: 6px !important; }
 
-.mt-8 { margin-top: 8px; }
+.mt-8 { margin-top: 8px !important; }
 
-.mt-16 { margin-top: 16px; }
+.mt-16 { margin-top: 16px !important; }
 
-.nowrap { white-space: nowrap; }
+.nowrap { white-space: nowrap !important; }
 
 @media (max-width: 500px) {
 	.hide-500 { display: none; }

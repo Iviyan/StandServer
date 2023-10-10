@@ -6,14 +6,20 @@ export default {
 		sampleIds: [],
 		configuration: {},
 		lastMeasurements: {},
-		homeViewVisited: false,
 		lastMeasurementsInitialized: false
 	},
 	getters: {
 		lastMeasurementTime(state) {
-			for (let sampleId in state.lastMeasurements)
-				return state.lastMeasurements[sampleId].at(-1).time;
-		}
+			let result = {};
+			for (let standId in state.lastMeasurements) {
+				for (let sampleId in state.lastMeasurements[standId]) {
+					result[standId] = state.lastMeasurements[standId][sampleId].at(-1).time;
+					break;
+				}
+			}
+			return result;
+		},
+		standIds: state => Object.keys(state.lastMeasurements).map(Number)
 	},
 	mutations: {
 		setSampleIds(state, value) { state.sampleIds = value; },
@@ -37,7 +43,6 @@ export default {
 				arr.push(measurement);
 			}
 		},
-		setHomeViewVisited(state, value) { state.homeViewVisited = value; },
 		setLastMeasurementsInitialized(state, value) { state.lastMeasurementsInitialized = value; },
 	},
 	actions: {

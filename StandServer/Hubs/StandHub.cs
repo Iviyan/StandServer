@@ -1,4 +1,6 @@
-﻿namespace StandServer.Hubs;
+﻿using StandServer.Services;
+
+namespace StandServer.Hubs;
 
 /// <summary> SignalR hub for mass distribution of measurements in real time. </summary>
 public class StandHub : Hub<IStandHubClient>
@@ -25,7 +27,7 @@ public class StandHub : Hub<IStandHubClient>
     /// <summary> Method called when a new client connects. The date of the last measurement is sent automatically. </summary>
     public override async Task OnConnectedAsync()
     {
-        await Clients.Caller.ActiveInfo(cachedData.LastMeasurementTime);
+        await Clients.Caller.ActiveInfo(cachedData.LastActiveTime, cachedData.LastStandMeasurementTime);
         await base.OnConnectedAsync();
     }
 }
@@ -37,7 +39,10 @@ public interface IStandHubClient
     Task Msg(string msg, CancellationToken cancellationToken = default);
 
     /// <summary> Method that updates information about the last measurement date. </summary>
-    Task ActiveInfo(DateTime? lastMeasurementTime, CancellationToken cancellationToken = default);
+    Task ActiveInfo(
+        DateTime? lastActiveTime,
+        Dictionary<short, DateTime> lastMeasurementTime,
+        CancellationToken cancellationToken = default);
 
     /// <summary> Method that handles new measurements. </summary>
     Task NewMeasurements(IEnumerable<Measurement> measurements, CancellationToken cancellationToken = default);

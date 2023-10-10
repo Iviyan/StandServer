@@ -5,7 +5,7 @@ import LoginView from '../views/Login.vue'
 
 // Lazy loading
 const DashboardView = () => import(/* webpackChunkName: "dashboard" */ '../views/Dashboard.vue')
-const HomeView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/HomeView.vue')
+const StandView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/StandView.vue')
 const SampleView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/SampleView.vue')
 const UsersView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/UsersView.vue')
 const ConfigurationView = () => import(/* webpackChunkName: "dashboard" */ '../views/dashboard/ConfigurationView.vue')
@@ -38,7 +38,12 @@ const routes = [
 		component: DashboardView,
 		beforeEnter: isAuthenticated,
 		children: [
-			{ path: '', name: 'home', component: HomeView, meta: { title: 'Главная' } },
+			{
+				name: 'stand',
+				path: '/stand/:id(-?\\d+)',
+				component: StandView,
+				props: route => ({ id: Number.parseInt(route.params.id) }),
+			},
 			{
 				name: 'sample',
 				path: 'samples/:id(-?\\d+)',
@@ -56,7 +61,7 @@ const routes = [
 			},
 		]
 	},
-	{ path: '/:catchAll(.*)*', redirect: '/' }
+	{ path: '/:catchAll(.*)*', redirect: { name: 'dashboard' } }
 ]
 
 const router = createRouter({

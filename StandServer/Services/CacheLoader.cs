@@ -1,4 +1,4 @@
-﻿namespace StandServer.Utils;
+﻿namespace StandServer.Services;
 
 /// <summary> Loading frequently used data into the <see cref="CachedData">cache</see> </summary>
 public class CacheLoader
@@ -15,26 +15,26 @@ public class CacheLoader
     }
 
     /// <inheritdoc cref="CacheLoader"/>
-    public async Task LoadAsync(CancellationToken stoppingToken = default)
+    public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation($"Load cache start...");
 
         using var scope = serviceProvider.CreateScope();
         var efContext = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-        await using var con = efContext.Database.GetDbConnection();
 
-        cachedData.SampleIds = new(
-            await con.QueryAsync<int>(new CommandDefinition(
-                @"select * from get_unique_sample_ids()", cancellationToken: stoppingToken)));
+        var lastMeasurements = await efContext.Measurements
+            .FromSqlRaw("select * from get_last_measurements(1);")
+            .AsNoTracking()
+            .ToListAsync(cancellationToken: cancellationToken);
 
-        logger.LogInformation($"> Sample ids loaded");
+        foreach (var measurement in lastMeasurements)
+            cachedData.LastSampleMeasurements[measurement.SampleId] = measurement;
 
-        cachedData.LastMeasurementTime = await efContext.Measurements.AsNoTracking()
-            .OrderByDescending(e => e.Time)
-            .Take(1).Select(m => (DateTime?)m.Time).SingleOrDefaultAsync(stoppingToken);
+        logger.LogInformation($"> Last sample measurements loaded");
 
-        logger.LogInformation($"> Last measurement time loaded");
-
+        cachedData.LastStandMeasurementTime = cachedData.LastSampleMeasurements.Values.GroupBy(m => m.StandId)
+            .ToDictionary(g => g.Key, g => g.Max(m => m.Time));
+        
         logger.LogInformation($"Load cache end...");
     }
 }

@@ -45,6 +45,7 @@ public class TelegramService : BackgroundService, ITelegramService
     private readonly NotificationsConfig notificationsConfig;
     private readonly IServiceProvider serviceProvider;
     private readonly IServiceScope scope;
+    private readonly CachedData cachedData;
 
     private const string DateTimeFormat = "dd.MM.yyyy HH:mm:ss";
 
@@ -54,11 +55,13 @@ public class TelegramService : BackgroundService, ITelegramService
     public TelegramService(
         ILogger<TelegramService> logger,
         IOptions<NotificationsConfig> notificationsOptions,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        CachedData cachedData)
     {
         this.logger = logger;
         this.notificationsConfig = notificationsOptions.Value;
         this.serviceProvider = serviceProvider;
+        this.cachedData = cachedData;
         scope = serviceProvider.CreateScope();
     }
 
@@ -294,20 +297,31 @@ public class TelegramService : BackgroundService, ITelegramService
             if (await CheckAuth() is not User currentUser) return;
 
             var connection = context.Database.GetDbConnection();
-
-            var sampleIds = await connection.QueryAsync<int>(
-                $"select sample_id from measurements " +
-                $"where time = (select time from measurements order by time desc limit 1)");
+            
+            List<int> sampleIds = new();
+            foreach (var lastStandTime in cachedData.LastStandMeasurementTime)
+            {
+                sampleIds.AddRange(
+                    cachedData.LastSampleMeasurements.Values
+                        .Where(m => m.Time == lastStandTime.Value && m.StandId == lastStandTime.Key)
+                        .Select(m => m.SampleId)
+                );
+            }
 
             var measurements = (await connection.QueryAsync<Measurement>(
                 $"select * from get_last_measurements(@count, @sampleIds);",
                 new { count = 1, sampleIds })).ToArray();
 
+            string MeasurementToString(Measurement m) =>
+                $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}";
+
             string samplesStateText = measurements.Length == 0
                 ? "Данные отсутствуют"
-                : measurements[0].Time.ToString(DateTimeFormat).Replace(".", @"\.") + "\n"
-                                                                                    + String.Join('\n', measurements.Select(m =>
-                                                                                        $"*{m.SampleId}* \\(_{m.State} \\| {SecondsToInterval(m.SecondsFromStart)}_\\) \\~ I: {m.I}, t: {m.T}"));
+                : string.Join("\n", measurements.GroupBy(m => m.StandId).Select(standGroup =>
+                    $"*Стенд {standGroup.Key}*\n"
+                    + standGroup.First().Time.ToString(DateTimeFormat).Replace(".", @"\.")
+                    + "\n" + String.Join('\n', standGroup.Select(MeasurementToString))
+                ));
 
             await BotClient!.SendTextMessageAsync(message.Chat, samplesStateText,
                 parseMode: ParseMode.MarkdownV2, cancellationToken: cancellationToken);
@@ -319,13 +333,13 @@ public class TelegramService : BackgroundService, ITelegramService
     }
 
     private const string StartCommandText = """
-Для работы с ботом необходимо авторизоваться.
+                                            Для работы с ботом необходимо авторизоваться.
 
-/login [username] [password] - авторизация
-/logout - выход
-/getlink - канал с уведомлениями стенда
-/state - состояние образцов
-""";
+                                            /login [username] [password] - авторизация
+                                            /logout - выход
+                                            /getlink - канал с уведомлениями стенда
+                                            /state - состояние образцов
+                                            """;
 
     private static readonly BotCommand[] BotCommandsRu =
     {
@@ -350,17 +364,17 @@ public class TelegramService : BackgroundService, ITelegramService
     public async Task SendAlarm(params Measurement[] measurements)
     {
         string GetAlarmMsg(Measurement measurement) =>
-            $"*{measurement.SampleId}* \\(_{measurement.State}_\\) \\~ I: {measurement.I}, t: {measurement.T}\n" +
-            $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}";
+            $"*{measurement.SampleId}* \\(_{measurement.State}_\\) \\~ I: {measurement.I}, t: {measurement.T}\n"
+            + $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}";
 
         await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
             String.Join('\n', measurements.Select(GetAlarmMsg)),
             parseMode: ParseMode.MarkdownV2);
     }
 
-    private static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0')}" +
-                                                      $":{(s % 3600 / 60 | 0).ToString().PadLeft(2, '0')}" +
-                                                      $":{(s % 60).ToString().PadLeft(2, '0')}";
+    private static string SecondsToInterval(int s) => $"{(s / 3600 | 0).ToString().PadLeft(2, '0')}"
+                                                      + $":{(s % 3600 / 60 | 0).ToString().PadLeft(2, '0')}"
+                                                      + $":{(s % 60).ToString().PadLeft(2, '0')}";
 
     /// <summary> Splitting a line with a first space. </summary>
     private static (string command, string? arg) ParseCommand(string s)

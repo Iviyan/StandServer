@@ -56,6 +56,7 @@ create type sample_state AS ENUM ('off', 'work', 'relax');
 
 create table measurements
 (
+    stand_id smallint not null default 1,
     sample_id int not null,
     time timestamptz not null,
     seconds_from_start int not null,
@@ -166,29 +167,28 @@ select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, 
 where row <= 2;
 */
 
-CREATE OR REPLACE FUNCTION get_last_measurements(count int)
+CREATE OR REPLACE FUNCTION get_last_measurements(p_count int)
     RETURNS setof measurements
 AS $$ BEGIN
     return query
-        select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
+        select stand_id, sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
             ( select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements ) as q
-        where row <= count order by time asc;
+        where row <= p_count order by time asc;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_last_measurements(p_count int, p_sample_ids int[])
+    RETURNS setof measurements
+AS $$ BEGIN
+    return query
+        select stand_id, sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
+            (
+                select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements
+                where sample_id = any(p_sample_ids)
+            ) as q
+        where row <= p_count order by time asc;
 END $$ LANGUAGE plpgsql;
 
 -- select * from get_last_measurements(5);
-
-CREATE OR REPLACE FUNCTION get_last_measurements(count int, sample_ids int[])
-    RETURNS setof measurements
-AS $$ BEGIN
-    return query
-        select sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from
-            (
-                select *, ROW_NUMBER() over(partition by sample_id order by time desc) as row from measurements
-                where sample_id = any(sample_ids)
-            ) as q
-        where row <= count order by time asc;
-END $$ LANGUAGE plpgsql;
-
 -- select * from get_last_measurements(20, array[80822])
 
 -- VACUUM ANALYZE measurements;
@@ -207,4 +207,34 @@ ALTER TABLE refresh_tokens
     DROP CONSTRAINT refresh_tokens_user_id_fkey,
     ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id)
         REFERENCES users (id) ON DELETE CASCADE;
+*/
+
+/*
+create table measurements_new
+(
+    stand_id smallint not null default 1,
+    sample_id int not null,
+    time timestamptz not null,
+    seconds_from_start int not null,
+    duty_cycle smallint not null,
+    t smallint not null,
+    tu smallint not null,
+    i smallint not null,
+    period smallint not null,
+    work smallint not null,
+    relax smallint not null,
+    frequency smallint not null,
+    state sample_state not null
+);
+
+create index measurements_new_sample_id_idx on measurements_new (sample_id);
+select create_hypertable('measurements_new', 'time');
+
+insert into measurements_new select 1 as stand_id, sample_id, time, seconds_from_start, duty_cycle, t, tu, i, period, work, relax, frequency, state from measurements;
+*/
+
+/*
+select sample_id from measurements where time = (select time from measurements where stand_id = 1 order by time desc limit 1)
+union all
+select sample_id from measurements where time = (select time from measurements where stand_id = 2 order by time desc limit 1);
 */

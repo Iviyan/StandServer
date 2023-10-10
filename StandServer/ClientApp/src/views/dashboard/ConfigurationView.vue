@@ -21,20 +21,29 @@
 
 		<textarea v-model="rawMeasurements"
 				  :readonly="!isAdmin"
-				  placeholder="00000123 12:00 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W"></textarea>
+				  placeholder="00000123 12:00 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W&#xA;2 00000123 12:00 01.01.2023|0:01| 10|39|50|7213|1000| 50| 10|10000|W"></textarea>
 
 		<button type="submit" :disabled="isMeasurementsLoading">Загрузить</button>
 	</form>
 
 	<p class="error-message" v-if="loadMeasurementsError">{{ loadMeasurementsError }}</p>
 
+	<form class="configuration-form mt-16" @submit.prevent="reloadCache" v-if="isAdmin">
+		<button type="submit">Перезагрузить кэш</button>
+		<p class="info">
+			Прерагрузка кэша может понадобится после ручного редактирования данных в БД
+			для отображения	актуального списка образцов и последних измерений.
+		</p>
+	</form>
+
+	<!-- TODO: Telegram bot link -->
 
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useStore } from 'vuex'
-import { callPatch, callPost } from '@/utils/api';
+import { callGet, callPatch, callPost } from '@/utils/api';
 import { errorToText, isEmpty } from "@/utils/utils";
 import iziToast from "izitoast";
 
@@ -96,7 +105,7 @@ async function loadMeasurements() {
 
 		iziToast.success({
 			title: 'Загрузка измерений завершена',
-			message: 'Перезагрузите страницу для того, чтобы увидеть изменения',
+			message: 'Перезагрузите страницу для того, чтобы увидеть изменения.',
 			timeout: 5000,
 			layout: 2
 		});
@@ -104,6 +113,17 @@ async function loadMeasurements() {
 		loadMeasurementsError.value = errorToText(err);
 		isMeasurementsLoading.value = false;
 	}
+}
+
+async function reloadCache() {
+	await callGet(`/api/reload-cache`);
+
+	iziToast.success({
+		title: 'Кэш перезагружен',
+		message: 'Перезагрузите страницу для того, чтобы увидеть изменения.',
+		timeout: 5000,
+		layout: 2
+	});
 }
 
 </script>
@@ -167,5 +187,13 @@ h3 {
 	font-size: 1.25rem;
 	margin: 24px 0 6px 0;
 	text-align: center;
+}
+
+.info {
+	margin: 0;
+}
+
+.info > a {
+	color: unset;
 }
 </style>

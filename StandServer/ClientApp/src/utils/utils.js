@@ -30,6 +30,17 @@ export function isEmpty(obj) {
 }
 
 /**
+ * Check if the object is not null and empty
+ * @param {object} obj
+ * @returns {boolean}
+ */
+export function isNotEmpty(obj) {
+	if (!(obj instanceof Object)) return false;
+	for (let i in obj) return true;
+	return false;
+}
+
+/**
  * Check whether the sample current does not exceed the set value if the sample is in an inactive state
  * @param measurement
  * @returns {boolean}

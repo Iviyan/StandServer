@@ -173,6 +173,7 @@ const deleteSampleVfmModal = useModal({
 
 				store.commit("removeSample", props.id);
 				await router.push('/');
+				await store.dispatch('loadLastMeasurements');
 			} catch (err) {
 				attrs.inProgress = false;
 				attrs.error = errorToText(err)

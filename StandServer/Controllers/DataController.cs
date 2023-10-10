@@ -1,6 +1,8 @@
 ﻿using CsvHelper.Configuration;
 using StandServer.Services;
 
+// ReSharper disable SimplifyLinqExpressionUseAll
+
 namespace StandServer.Controllers;
 
 /// <summary> A controller containing actions for managing measurements data. </summary>
@@ -18,9 +20,9 @@ public class DataController : Controller
 
     /// <summary> A user-accessible GET method for getting a list of all sample ids. </summary>
     [HttpGet("samples")]
-    public IActionResult GetSamplesList([FromServices] CachedData data)
+    public IActionResult GetSamplesList([FromServices] CachedData cachedData)
     {
-        return Ok(data.SampleIds);
+        return Ok(cachedData.LastSampleMeasurements.Keys);
     }
 
     /// <summary> A POST method for receiving the status of active samples or importing measurements. </summary>
@@ -29,13 +31,13 @@ public class DataController : Controller
     /// and updating the data on the site in real time. Required for importing measurements.</param>
     [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
     public async Task<IActionResult> AddMeasurements(
-        [FromServices] ApplicationContext context, [FromServices] CachedData data,
+        [FromServices] ApplicationContext context, [FromServices] CachedData cachedData,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
         [FromServices] ITelegramService telegramService,
         [FromServices] IApplicationConfiguration applicationConfiguration,
         [FromBody] string raw, [FromQuery] bool silent = false)
     {
-        data.LastActiveTime = DateTime.UtcNow;
+        cachedData.LastActiveTime = DateTime.UtcNow;
 
         List<Measurement> measurements = new();
         foreach (string measurementRaw in raw.GetLines(removeEmptyLines: true))
@@ -75,22 +77,43 @@ public class DataController : Controller
         {
             context.AddRange(measurements);
             await context.SaveChangesAsync();
-            foreach (int sampleId in measurements.Select(m => m.SampleId).Distinct())
-                data.SampleIds.Add(sampleId);
+            var lastSampleMeasurements = measurements.GroupBy(m => m.SampleId)
+                .Select(g => (sampleId: g.Key, measurement: g.MaxBy(m => m.Time)!));
+
+            foreach (var lastSampleMeasurement in lastSampleMeasurements)
+            {
+                if (cachedData.LastSampleMeasurements.TryAdd(lastSampleMeasurement.sampleId, lastSampleMeasurement.measurement)) continue;
+
+                var measurement = cachedData.LastSampleMeasurements[lastSampleMeasurement.sampleId];
+                if (lastSampleMeasurement.measurement.Time > measurement.Time)
+                    cachedData.LastSampleMeasurements[lastSampleMeasurement.sampleId] = lastSampleMeasurement.measurement;
+            }
+
+            await standHub.Clients.All.ActiveInfo(cachedData.LastActiveTime, cachedData.LastStandMeasurementTime); // ? 
             return Ok();
         }
-
-        data.LastMeasurementTime = measurements.MaxBy(m => m.Time)!.Time;
 
         if (!measurements.Select(m => m.SampleId).All(new HashSet<int>().Add)) // check duplicates
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: localizer["AddMeasurements.UseSilent"]);
 
+        var measurementsTime = measurements[0].Time;
+        if (measurements.Any(m => m.Time != measurementsTime)) // time of all measurements must be same
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: localizer["AddMeasurements.MeasurementsTimeIsDifferent"]);
+
+        var measurementsStandId = measurements[0].StandId;
+        if (measurements.Any(m => m.StandId != measurementsStandId)) // stand id of all measurements must be same
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: localizer["AddMeasurements.MeasurementsStandIdIsDifferent"]);
+
+        cachedData.LastStandMeasurementTime[measurementsStandId] = measurementsTime;
+
         context.AddRange(measurements);
         await context.SaveChangesAsync();
 
         foreach (var measurement in measurements)
-            data.SampleIds.Add(measurement.SampleId);
+            cachedData.LastSampleMeasurements[measurement.SampleId] = measurement;
 
         if (telegramService.IsOk)
         {
@@ -103,44 +126,51 @@ public class DataController : Controller
         }
 
         await standHub.Clients.All.NewMeasurements(measurements);
+        await standHub.Clients.All.ActiveInfo(cachedData.LastActiveTime, cachedData.LastStandMeasurementTime);
 
         return Ok();
     }
 
     /// <summary> A user-accessible GET method for getting measurements for the specified period. </summary>
-    /// <param name="id">Sample id</param>
+    /// <param name="sampleId">Sample id</param>
     /// <param name="from">IIf not set, then unlimited.</param>
     /// <param name="to">If not set, then unlimited.</param>
-    [HttpGet("samples/{id:int}")]
-    public async Task<IActionResult> GetMeasurements(int id,
-        [FromServices] ApplicationContext context, [FromServices] CachedData data,
+    [HttpGet("samples/{sampleId:int}")]
+    public async Task<IActionResult> GetMeasurements(int sampleId,
+        [FromServices] ApplicationContext context, [FromServices] CachedData cachedData,
         DateTime? from = null, DateTime? to = null)
     {
         from.SetKindUtc() ??= DateTime.MinValue;
         to.SetKindUtc() ??= DateTime.MaxValue;
 
-        if (!data.SampleIds.Contains(id))
+        if (!cachedData.LastSampleMeasurements.ContainsKey(sampleId))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         var measurements = await context.Measurements.AsNoTracking()
-            .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
+            .Where(m => m.SampleId == sampleId && m.Time >= from && m.Time <= to)
             .OrderBy(m => m.Time).Cast<IIndependentMeasurement>().ToListAsync();
 
         return Ok(measurements);
     }
 
     /// <summary> An admin-accessible DELETE method that removes sample with all its measurements. </summary>
-    /// <param name="id">Sample id</param>
-    [HttpDelete("samples/{id:int}"), Authorize(AuthPolicy.Admin)]
-    public async Task<IActionResult> DeleteSampleMeasurements(int id,
+    /// <param name="sampleId">Sample id</param>
+    [HttpDelete("samples/{sampleId:int}"), Authorize(AuthPolicy.Admin)]
+    public async Task<IActionResult> DeleteSampleMeasurements(int sampleId,
         [FromServices] ApplicationContext context,
-        [FromServices] CachedData data)
+        [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
+        [FromServices] CachedData cachedData)
     {
-        if (!data.SampleIds.Contains(id))
+        if (!cachedData.LastSampleMeasurements.ContainsKey(sampleId))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
-        int delCount = await context.Measurements.Where(m => m.SampleId == id).ExecuteDeleteAsync();
-        data.SampleIds.Remove(id);
+        int delCount = await context.Measurements.Where(m => m.SampleId == sampleId).ExecuteDeleteAsync();
+        cachedData.LastSampleMeasurements.Remove(sampleId);
+
+        cachedData.LastStandMeasurementTime = cachedData.LastSampleMeasurements.Values.GroupBy(m => m.StandId)
+            .ToDictionary(g => g.Key, g => g.Max(m => m.Time));
+
+        await standHub.Clients.All.ActiveInfo(cachedData.LastActiveTime, cachedData.LastStandMeasurementTime);
 
         await context.Database.ExecuteSqlRawAsync("VACUUM ANALYZE measurements");
 
@@ -153,6 +183,7 @@ public class DataController : Controller
     [HttpGet("samples/last")]
     public async Task<IActionResult> GetLastMeasurements(
         [FromServices] DatabaseContext context,
+        [FromServices] CachedData cachedData,
         [FromQuery(Name = "sample_ids")] string sampleIdsRaw = "active", int count = 20)
     {
         if (count <= 0)
@@ -162,9 +193,15 @@ public class DataController : Controller
 
         if (sampleIdsRaw == "active")
         {
-            var sampleIds = await context.Connection.QueryAsync<int>(
-                $"select sample_id from measurements " +
-                $"where time = (select time from measurements order by time desc limit 1)");
+            List<int> sampleIds = new();
+            foreach (var lastStandTime in cachedData.LastStandMeasurementTime)
+            {
+                sampleIds.AddRange(
+                    cachedData.LastSampleMeasurements.Values
+                        .Where(m => m.Time == lastStandTime.Value && m.StandId == lastStandTime.Key)
+                        .Select(m => m.SampleId)
+                );
+            }
 
             measurements = await context.Connection.QueryAsync<Measurement>(
                 $"select * from get_last_measurements(@count, @sampleIds);",
@@ -199,9 +236,29 @@ public class DataController : Controller
                 new { count, sampleIds });
         }
 
+        /*
+         * If the sample's stand id changes, then until enough new measurements appear,
+         * the sample measurements will be partially included in both stands.
+         */
+
         return Ok(measurements
-            .GroupBy(m => m.SampleId)
-            .ToDictionary(g => g.Key, g => g.AsEnumerable()));
+            .GroupBy(m => m.StandId)
+            .ToDictionary(
+                standGroup => standGroup.Key,
+                standGroup => standGroup
+                    .GroupBy(m => m.SampleId)
+                    .ToDictionary(
+                        sampleGroup => sampleGroup.Key,
+                        sampleGroup => sampleGroup.AsEnumerable())
+            ));
+    }
+
+    /// <summary> An admin-accessible GET method that reload cache from database. </summary>
+    [HttpGet("reload-cache"), Authorize(AuthPolicy.Admin)]
+    public async Task<IActionResult> ReloadCache([FromServices] CacheLoader cacheLoader)
+    {
+        await cacheLoader.LoadAsync();
+        return Ok();
     }
 
     /// <summary> A model for obtaining and displaying the measurement period of a sample. </summary>
@@ -213,16 +270,16 @@ public class DataController : Controller
 
     /// <summary> A user-accessible GET method for getting the measurement period of the sample. </summary>
     /// <param name="id">Sample id</param>
-    [HttpGet("samples/{id:int}/period")]
-    public async Task<IActionResult> GetSamplePeriod(int id,
-        [FromServices] DatabaseContext context, [FromServices] CachedData data)
+    [HttpGet("samples/{sampleId:int}/period")]
+    public async Task<IActionResult> GetSamplePeriod(int sampleId,
+        [FromServices] DatabaseContext context, [FromServices] CachedData cachedData)
     {
-        if (!data.SampleIds.Contains(id))
+        if (!cachedData.LastSampleMeasurements.ContainsKey(sampleId))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         SamplePeriod period = (await context.Connection.QueryAsync<SamplePeriod>(
             @"select * from get_sample_period(@id);",
-            new { id })).Single();
+            new { id = sampleId })).Single();
 
         return Ok(period);
     }
@@ -231,19 +288,19 @@ public class DataController : Controller
     /// <param name="id">Sample id</param>
     /// <param name="from">IIf not set, then unlimited.</param>
     /// <param name="to">If not set, then unlimited.</param>
-    [HttpGet("samples/{id:int}/csv")]
-    public async Task<IActionResult> GetMeasurementsCsv(int id,
-        [FromServices] ApplicationContext context, [FromServices] CachedData data,
+    [HttpGet("samples/{sampleId:int}/csv")]
+    public async Task<IActionResult> GetMeasurementsCsv(int sampleId,
+        [FromServices] ApplicationContext context, [FromServices] CachedData cachedData,
         DateTime? from = null, DateTime? to = null)
     {
         from ??= DateTime.MinValue;
         to ??= DateTime.MaxValue;
 
-        if (!data.SampleIds.Contains(id))
+        if (!cachedData.LastSampleMeasurements.ContainsKey(sampleId))
             return Problem(statusCode: StatusCodes.Status404NotFound, title: localizer["NoMeasurements"]);
 
         var measurements = await context.Measurements.AsNoTracking()
-            .Where(m => m.SampleId == id && m.Time >= from && m.Time <= to)
+            .Where(m => m.SampleId == sampleId && m.Time >= from && m.Time <= to)
             .OrderBy(m => m.Time).ToListAsync();
 
         MemoryStream stream = new();
@@ -258,7 +315,34 @@ public class DataController : Controller
         }
 
         return File(stream.ToArray(), "text/csv",
-            $"{id:D8} [{from:dd.MM.yyyy HH.mm.ss} - {to:dd.MM.yyyy HH.mm.ss}].csv");
+            $"{sampleId:D8} [{from:dd.MM.yyyy HH.mm.ss} - {to:dd.MM.yyyy HH.mm.ss}].csv");
+    }
+
+    /// <summary> A user-accessible GET method to download all measurements in csv format. </summary>
+    [HttpGet("samples/csv")]
+    public async Task<IActionResult> GetMeasurementsCsv(
+        [FromServices] ApplicationContext context)
+    {
+        // TODO: use streams
+        var measurements = await context.Measurements.AsNoTracking()
+            .OrderBy(m => m.Time).ToListAsync();
+
+        var from = measurements.First().Time;
+        var to = measurements.Last().Time;
+
+        MemoryStream stream = new();
+        using var writer = new StreamWriter(stream);
+        using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+               {
+                   Delimiter = ";" // excel
+               }, leaveOpen: true))
+        {
+            csv.Context.RegisterClassMap<MeasurementMap>();
+            csv.WriteRecords(measurements);
+        }
+
+        return File(stream.ToArray(), "text/csv",
+            $"[{from:dd.MM.yyyy HH.mm.ss} - {to:dd.MM.yyyy HH.mm.ss}].csv");
     }
 
     /// <summary> Parse measurement from text format to <see cref="Measurement"/> class. </summary>
@@ -281,11 +365,22 @@ public class DataController : Controller
         }
 
         if (!TryNext()) return null;
-        if (!int.TryParse(s[..nextSeparatorIndex], out int sampleId)) return null;
+        if (!short.TryParse(s[..nextSeparatorIndex], out short standId)) return null;
 
         if (!TryNext()) return null;
+        if (int.TryParse(s[valueStartIndex..nextSeparatorIndex], out int sampleId))
+        {
+            if (!TryNext()) return null;
+        }
+        else
+        {
+            sampleId = standId;
+            standId = 1;
+        }
+
         if (!TimeOnly.TryParse(s[valueStartIndex..nextSeparatorIndex],
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly timePart)) return null;
+
         if (!TryNext('|')) return null;
         if (!DateOnly.TryParseExact(s[valueStartIndex..nextSeparatorIndex], "dd.MM.yyyy",
                 CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly datePart)) return null;
@@ -333,6 +428,7 @@ public class DataController : Controller
 
         Measurement measurement = new()
         {
+            StandId = standId,
             SampleId = sampleId,
             Time = dateTime.ToUniversalTime(),
             SecondsFromStart = secondsFromStart,

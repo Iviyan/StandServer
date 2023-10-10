@@ -1,4 +1,4 @@
-﻿namespace StandServer;
+﻿namespace StandServer.Services;
 
 /// <summary> Scoped service that stores request data. </summary>
 public class RequestData

@@ -1,11 +1,12 @@
 <template>
 	<loader :show="!loaded" />
 
-	<template v-if="loaded">
+	<template v-if="loaded && lastMeasurements">
 
 		<div class="summary">
 			<div class="header">
-				<p style="display: flex; align-items: center;"><span v-if="!isSamplesOk" style="color: red">есть проблемы</span></p>
+				<p style="display: flex; align-items: center;"><span v-if="!isSamplesOk" style="color: red">есть проблемы</span>
+				</p>
 				<h4>Образцы</h4>
 				<p style="text-align: right">(Обновлено:
 					{{ lastMeasurementTime ? millisToDateTime(lastMeasurementTime) : '-' }})</p>
@@ -14,11 +15,13 @@
 			<div class="sample-info mt-8" v-for="(measurement, sampleId) in lastSampleMeasurements"
 				 :class="[measurement.state, { alarm: !isSampleOk(measurement) }]"
 				 @click="sampleClick(sampleId)">
-				<p class="id">{{ sampleIdFormat(sampleId) }}</p>
+				<p class="id">{{ sampleIdFormat(Number(sampleId)) }}</p>
 				<p class="state">Состояние: {{ measurement.state }}</p>
 				<p class="t">t: {{ measurement.t }}</p>
-				<router-link class="open-link" :to="{ name: 'sample', params: { id: sampleId }}">Просмотр истории</router-link>
-				<p class="work-time" style="grid-row: span 1;">Время работы: {{ secondsToInterval(measurement.secondsFromStart) }}</p>
+				<router-link class="open-link" :to="{ name: 'sample', params: { id: sampleId }}">Просмотр истории
+				</router-link>
+				<p class="work-time" style="grid-row: span 1;">Время работы:
+					{{ secondsToInterval(measurement.secondsFromStart) }}</p>
 				<p class="i">I: {{ measurement.i }}</p>
 
 				<p v-if="!isSampleOk(measurement)" class="alarm-msg">Высокий ток в выключенном состоянии</p>
@@ -90,7 +93,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useStore } from 'vuex'
 
 import MeasurementsChart from '@/components/MeasurementsRealtimeChart'
@@ -101,13 +104,18 @@ import { objectMap, isSampleOk } from "@/utils/utils";
 import { reverseIterate } from "@/utils/arrayUtils";
 import { sampleIdFormat } from "@/utils/stringUtils";
 import { secondsToInterval, millisToDateTime } from "@/utils/timeUtils";
+import { useRouter } from "vue-router";
 
 const store = useStore();
+const router = useRouter();
 
-const sampleIds = computed(() => store.state.dashboard.sampleIds);
-const lastMeasurements = computed(() => store.state.dashboard.lastMeasurements);
-const lastSampleMeasurements = computed(() => objectMap(store.state.dashboard.lastMeasurements, v => v.at(-1)));
-const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime);
+const props = defineProps({
+	id: Number
+});
+
+const lastMeasurements = computed(() => store.state.dashboard.lastMeasurements[props.id]);
+const lastSampleMeasurements = computed(() => objectMap(lastMeasurements.value, v => v.at(-1)));
+const lastMeasurementTime = computed(() => store.getters.lastMeasurementTime[props.id]);
 const isSamplesOk = computed(() => {
 	for (let sample in lastSampleMeasurements.value)
 		if (!isSampleOk(lastSampleMeasurements.value[sample])) return false;
@@ -123,10 +131,37 @@ function sampleClick(sampleId) {
 		monitorSampleId.value = monitorSampleId.value === sampleId ? null : sampleId;
 }
 
-onMounted(async () => {
-	if (store.state.dashboard.homeViewVisited) return;
-	store.commit("setHomeViewVisited", true);
-});
+watch(() => props.id, async id => {
+	monitorSampleId.value = null;
+
+	if (!Number.isFinite(id)) {
+		await router.replace({ name: 'dashboard' });
+		return;
+	}
+
+	if (loaded.value && !store.getters.standIds.includes(id)) {
+		let route = store.getters.standIds.length > 0
+				? { name: 'stand', params: { id: store.getters.standIds[0] } }
+				: { name: 'dashboard' };
+
+		await router.push(route);
+		return;
+	}
+
+	document.title = "Стенд " + id;
+}, { immediate: true })
+
+watch(loaded, async v => {
+	if (!v) return;
+
+	if (!store.getters.standIds.includes(props.id)) {
+		let route = store.getters.standIds.length > 0
+				? { name: 'stand', params: { id: store.getters.standIds[0] } }
+				: { name: 'dashboard' };
+
+		await router.push(route);
+	}
+}, { immediate: true })
 
 </script>
 
