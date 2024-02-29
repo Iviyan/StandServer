@@ -319,7 +319,7 @@ public class TelegramService : BackgroundService, ITelegramService
                 ? "Данные отсутствуют"
                 : string.Join("\n", measurements.GroupBy(m => m.StandId).Select(standGroup =>
                     $"*Стенд {standGroup.Key}*\n"
-                    + standGroup.First().Time.ToString(DateTimeFormat).Replace(".", @"\.")
+                    + standGroup.First().Time.ToLocalTime().ToString(DateTimeFormat).Replace(".", @"\.")
                     + "\n" + String.Join('\n', standGroup.Select(MeasurementToString))
                 ));
 
@@ -365,7 +365,7 @@ public class TelegramService : BackgroundService, ITelegramService
     {
         string GetAlarmMsg(Measurement measurement) =>
             $"*{measurement.SampleId}* \\(_{measurement.State}_\\) \\~ I: {measurement.I}, t: {measurement.T}\n"
-            + $"{measurement.Time.ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}";
+            + $"{measurement.Time.ToLocalTime().ToString(DateTimeFormat).Replace(".", @"\.")} \\| {SecondsToInterval(measurement.SecondsFromStart)}";
 
         await BotClient!.SendTextMessageAsync(notificationsConfig.Telegram!.ChannelId,
             String.Join('\n', measurements.Select(GetAlarmMsg)),

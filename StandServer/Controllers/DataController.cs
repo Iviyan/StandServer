@@ -29,13 +29,14 @@ public class DataController : Controller
     /// <param name="raw">Measurements in text format.</param>
     /// <param name="silent">If this parameter is set, the measurements are imported without sending notifications
     /// and updating the data on the site in real time. Required for importing measurements.</param>
+    /// <param name="standId">Overrides the stand id in measurements.</param>
     [HttpPost("samples"), Consumes(MediaTypeNames.Text.Plain), AllowAnonymous]
     public async Task<IActionResult> AddMeasurements(
         [FromServices] ApplicationContext context, [FromServices] CachedData cachedData,
         [FromServices] IHubContext<StandHub, IStandHubClient> standHub,
         [FromServices] ITelegramService telegramService,
         [FromServices] IApplicationConfiguration applicationConfiguration,
-        [FromBody] string raw, [FromQuery] bool silent = false)
+        [FromBody] string raw, [FromQuery] bool silent = false, [FromQuery] short? standId = null)
     {
         cachedData.LastActiveTime = DateTime.UtcNow;
 
@@ -46,6 +47,8 @@ public class DataController : Controller
 
             if (measurement is null)
                 return Problem(statusCode: StatusCodes.Status400BadRequest, title: localizer["AddMeasurements.InvalidFormat"]);
+
+            if (standId.HasValue) measurement.StandId = standId.Value;
 
             measurements.Add(measurement);
         }
